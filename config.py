@@ -1,16 +1,33 @@
-# Configuration de la connexion PostgreSQL
-# Ne pas versionner ce fichier dans git
+# Chargement des variables d'environnement et configuration SQLAlchemy pour PostgreSQL
 import os
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
 
-DB_CONFIG = {
-    'host': os.getenv('CRM_DB_HOST', ''),
-    'port': os.getenv('CRM_DB_PORT', ''),
-    'database': os.getenv('CRM_DB_NAME', ''),
-    'user': os.getenv('CRM_DB_USER', ''),
-    'password': os.getenv('CRM_DB_PASSWORD', ''),
-}
+# Charger les variables d'environnement depuis le fichier .env
+load_dotenv()
 
-SQLALCHEMY_DATABASE_URL = (
-    f"postgresql+psycopg2://{DB_CONFIG['user']}:{DB_CONFIG['password']}@"
-    f"{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}"
-)
+DB_USER = os.getenv('DB_USER')
+DB_PASSWORD = os.getenv('DB_PASSWORD')
+DB_HOST = os.getenv('DB_HOST')
+DB_PORT = os.getenv('DB_PORT')
+DB_NAME = os.getenv('DB_NAME')
+
+# URL de connexion PostgreSQL pour SQLAlchemy
+DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+# Créer l'engine SQLAlchemy
+engine = create_engine(DATABASE_URL)
+
+# Tester la connexion à la base de données
+def test_connection():
+	try:
+		from sqlalchemy import text
+		with engine.connect() as connection:
+			result = connection.execute(text("SELECT 1"))
+			print("Connexion réussie !", result.scalar())
+	except Exception as e:
+		print("Erreur de connexion :", e)
+
+if __name__ == "__main__":
+	test_connection()
+
