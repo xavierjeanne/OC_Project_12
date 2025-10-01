@@ -1,4 +1,20 @@
-# Création d'un utilisateur et d'une base PostgreSQL pour Epic Events CRM
+
+# Guide d'installation et d'utilisation
+
+## 1. Créer un environnement virtuel
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate
+```
+
+## 2. Installer les dépendances
+
+```powershell
+pip install -r requirements.txt
+```
+
+## 3. Créer un utilisateur PostgreSQL et une base de données
 
 ## Prérequis
 - PostgreSQL installé et démarré
@@ -7,31 +23,58 @@
 
 ## Étapes via psql
 
-1. Ouvrir un terminal et lancer psql :
+a. Ouvrir un terminal et lancer psql :
    ```powershell
    psql -U postgres -h localhost -p 5433
    ```
    (Entrez le mot de passe administrateur PostgreSQL)
 
-2. Créer l'utilisateur non privilégié :
+b. Créer l'utilisateur non privilégié :
    ```sql
-   CREATE USER epic_user WITH PASSWORD 'mot_de_passe_fort';
+   CREATE USER env_db_user WITH PASSWORD 'env_db_password';
    ```
 
-3. Créer la base de données :
+c. Créer la base de données :
    ```sql
-   CREATE DATABASE epic_events_crm OWNER epic_user;
+   CREATE DATABASE env_db_name OWNER env_db_user;
+   CREATE DATABASE crm_test_db OWNER env_db_user;
    ```
 
-4. Accorder les droits à l'utilisateur :
+d. Accorder les droits à l'utilisateur :
    ```sql
-   GRANT CONNECT ON DATABASE epic_events_crm TO epic_user;
-   GRANT ALL PRIVILEGES ON DATABASE epic_events_crm TO epic_user;
+   GRANT CONNECT ON DATABASE env_db_name TO env_db_user;
+   GRANT ALL PRIVILEGES ON DATABASE env_db_name TO env_db_user;
+   GRANT CONNECT ON DATABASE crm_test_db TO env_db_user;
+   GRANT ALL PRIVILEGES ON DATABASE crm_test_db TO env_db_user;
    ```
 
-## Sécurité
-- Ne jamais utiliser l'utilisateur `postgres` pour l'application.
-- Stocker le mot de passe dans un fichier `.env` (jamais en dur dans le code).
+## 4. Configurer les variables d'environnement
 
----
-Ce guide fonctionne aussi dans PgAdmin (utilisez l'outil de requête SQL).
+Créez un fichier `.env` à la racine du projet. Utilisez le modèle ci-dessous comme `env.example` :
+
+```env
+DB_USER=env_db_user
+DB_PASSWORD=env_db_password
+DB_HOST=localhost
+DB_PORT=env_db_port
+DB_NAME=env_db_name
+```
+
+Copiez `env.example` en `.env` et renseignez vos identifiants.
+Copiez `env.example` en `.env.test` et renseignez vos identifiants pour les tests.
+
+## 5. Initialiser la base de données
+
+Lancez la commande suivante pour créer toutes les tables :
+
+```powershell
+python models.py
+```
+
+## 6. Lancer les tests unitaires avec pytest
+
+```powershell
+pytest/tests/unit
+```
+
+

@@ -8,4 +8,7 @@ __pycache__/
 # Environment variables
 .env
 
+docs
 
+.pytest_cache/
+diagramme.png

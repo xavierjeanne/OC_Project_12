@@ -1,9 +1,12 @@
 from sqlalchemy import create_engine
+
 from config import SQLALCHEMY_DATABASE_URL
+
 
 # Crée l'engine SQLAlchemy pour PostgreSQL
 def get_engine():
     return create_engine(SQLALCHEMY_DATABASE_URL, echo=True)
+
 
 if __name__ == "__main__":
     engine = get_engine()
