@@ -1,34 +1,42 @@
-import os
-import sys
+"""
+Tests for CASCADE behaviors in database relationships
+Tests that foreign key constraints work properly with CASCADE DELETE and SET NULL
+"""
+
 import pytest
 from datetime import datetime
-from config import engine
-from crud.contract_crud import create_contract
-from crud.customer_crud import Session, create_customer, delete_customer
-from crud.employee_crud import create_employee, delete_employee
-from crud.event_crud import create_event
-from models import Base, Contract, Customer, Employee, Event
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
+from sqlalchemy.orm import sessionmaker
+
+from db.config import engine
+from models.models import Base, Contract, Customer, Employee, Event
+from repositories import (
+    ContractRepository,
+    CustomerRepository,
+    EmployeeRepository,
+    EventRepository,
+)
 
 
-# Setup DB once per test session
 @pytest.fixture(scope="session", autouse=True)
 def setup_database():
-    from config import DATABASE_URL
+    """Setup database once per test session"""
+    from db.config import DATABASE_URL
 
-    print("=== Test Setup ===")
+    print("\n=== Test Cascade Setup ===")
     print(f"Connection URL: {DATABASE_URL}")
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
-    print("Tables created successfully")
+    print("✅ Tables created successfully")
     yield
 
 
-# cleanup data between tests
-@pytest.fixture(autouse=True)
-def cleanup_data():
-    yield
+@pytest.fixture
+def test_session():
+    """Create a fresh database session for each test"""
+    Session = sessionmaker(bind=engine)
     session = Session()
+    yield session
+    # Cleanup after each test
     try:
         session.query(Event).delete()
         session.query(Contract).delete()
@@ -42,235 +50,286 @@ def cleanup_data():
         session.close()
 
 
-def test_cascade_delete_customer_deletes_contracts_and_events():
+@pytest.fixture
+def customer_repo(test_session):
+    """Customer repository instance"""
+    return CustomerRepository(test_session)
+
+
+@pytest.fixture
+def employee_repo(test_session):
+    """Employee repository instance"""
+    return EmployeeRepository(test_session)
+
+
+@pytest.fixture
+def contract_repo(test_session):
+    """Contract repository instance"""
+    return ContractRepository(test_session)
+
+
+@pytest.fixture
+def event_repo(test_session):
+    """Event repository instance"""
+    return EventRepository(test_session)
+
+
+def test_cascade_delete_customer_deletes_contracts_and_events(
+    test_session, customer_repo, employee_repo, contract_repo, event_repo
+):
     """
     Test that deleting a Customer also deletes its Contracts and Events
-    thanks to cascade='all, delete-orphan'
+    thanks to cascade='all, delete-orphan' on relationships
     """
     print("\n=== Test CASCADE: Deleting Customer → Contract + Event ===")
 
-    # Create an employee (sales + support)
-    create_employee("Sales Person", "sales@test.com", "sales", current_user=None)
-    create_employee("Support Person", "support@test.com", "support", current_user=None)
+    # Create employees (sales + support)
+    sales = employee_repo.create(
+        {"name": "Sales Person", "email": "sales@test.com", "role": "sales"}
+    )
+    support = employee_repo.create(
+        {"name": "Support Person", "email": "support@test.com", "role": "support"}
+    )
 
     # Create a customer
-    create_customer("John Doe", "john@test.com", current_user=None)
-
-    session = Session()
-    customer = session.query(Customer).first()
-    sales = session.query(Employee).filter_by(role="sales").first()
-    support = session.query(Employee).filter_by(role="support").first()
+    customer = customer_repo.create(
+        {"full_name": "John Doe", "email": "john@test.com", "phone": "0123456789"}
+    )
 
     # Create a contract linked to the customer
-    create_contract(
-        customer.id, sales.id, 5000.0, 2500.0, datetime.now(), current_user=None
+    contract = contract_repo.create(
+        {
+            "customer_id": customer.id,
+            "sales_contact_id": sales.id,
+            "total_amount": 5000.0,
+            "remaining_amount": 2500.0,
+            "date_created": datetime.now(),
+            "signed": False,
+        }
     )
-    contract = session.query(Contract).first()
 
     # Create an event linked to the contract and the customer
-    create_event(
-        contract.id,
-        customer.id,
-        support.id,
-        "Wedding",
-        datetime.now(),
-        datetime.now(),
-        "Paris",
-        100,
-        current_user=None,
+    event = event_repo.create(
+        {
+            "contract_id": contract.id,
+            "customer_id": customer.id,
+            "support_contact_id": support.id,
+            "name": "Wedding",
+            "date_start": datetime.now(),
+            "date_end": datetime.now(),
+            "location": "Paris",
+            "attendees": 100,
+            "notes": "Test event",
+        }
     )
 
     # Check that everything exists
-    assert session.query(Customer).count() == 1
-    assert session.query(Contract).count() == 1
-    assert session.query(Event).count() == 1
+    assert customer_repo.count() == 1
+    assert contract_repo.count() == 1
+    assert event_repo.count() == 1
     print("✅ Before deletion: 1 Customer, 1 Contract, 1 Event")
 
     # Delete the customer
-    customer_id = customer.id
-    session.close()
-    delete_customer(customer_id, current_user=None)
+    customer_repo.delete(customer.id)
+    test_session.commit()
 
-    # Check that the customer, contract AND event have been deleted
-    session = Session()
-    assert session.query(Customer).count() == 0
-    assert session.query(Contract).count() == 0
-    assert session.query(Event).count() == 0
+    # Check that the customer, contract AND event have been deleted (CASCADE)
+    assert customer_repo.count() == 0
+    assert contract_repo.count() == 0
+    assert event_repo.count() == 0
     print("✅ After deletion Customer: 0 Customer, 0 Contract, 0 Event (CASCADE OK)")
-    session.close()
 
 
-def test_cascade_delete_contract_deletes_events():
+def test_cascade_delete_contract_deletes_events(
+    test_session, customer_repo, employee_repo, contract_repo, event_repo
+):
     """
     Test that deleting a Contract also deletes its Events
+    thanks to cascade='all, delete-orphan' on contract.events relationship
     """
     print("\n=== Test CASCADE: Deleting Contract → Event ===")
 
     # Create entities
-    create_employee("Sales Person", "sales2@test.com", "sales", current_user=None)
-    create_employee("Support Person", "support2@test.com", "support", current_user=None)
-    create_customer("Jane Doe", "jane@test.com", current_user=None)
-
-    session = Session()
-    customer = session.query(Customer).first()
-    sales = session.query(Employee).filter_by(role="sales").first()
-    support = session.query(Employee).filter_by(role="support").first()
-
-    # Create contract and event
-    create_contract(
-        customer.id, sales.id, 3000.0, 1500.0, datetime.now(), current_user=None
+    sales = employee_repo.create(
+        {"name": "Sales Person", "email": "sales2@test.com", "role": "sales"}
     )
-    contract = session.query(Contract).first()
-    create_event(
-        contract.id,
-        customer.id,
-        support.id,
-        "Conference",
-        datetime.now(),
-        datetime.now(),
-        "Lyon",
-        50,
-        current_user=None,
+    support = employee_repo.create(
+        {"name": "Support Person", "email": "support2@test.com", "role": "support"}
+    )
+    customer = customer_repo.create(
+        {"full_name": "Jane Doe", "email": "jane@test.com", "phone": "0123456789"}
+    )
+
+    # Create contract
+    contract = contract_repo.create(
+        {
+            "customer_id": customer.id,
+            "sales_contact_id": sales.id,
+            "total_amount": 3000.0,
+            "remaining_amount": 1500.0,
+            "date_created": datetime.now(),
+            "signed": False,
+        }
+    )
+
+    # Create event
+    event = event_repo.create(
+        {
+            "contract_id": contract.id,
+            "customer_id": customer.id,
+            "support_contact_id": support.id,
+            "name": "Conference",
+            "date_start": datetime.now(),
+            "date_end": datetime.now(),
+            "location": "Lyon",
+            "attendees": 50,
+            "notes": "Test conference",
+        }
     )
 
     # Check
-    assert session.query(Contract).count() == 1
-    assert session.query(Event).count() == 1
+    assert contract_repo.count() == 1
+    assert event_repo.count() == 1
     print("✅ Before deletion: 1 Contract, 1 Event")
 
     # Delete the contract
-    contract_id = contract.id
-    session.close()
-    from crud.contract_crud import delete_contract
+    contract_repo.delete(contract.id)
+    test_session.commit()
 
-    delete_contract(contract_id, current_user=None)
-
-    # Check that the event has also been deleted
-    session = Session()
-    assert session.query(Contract).count() == 0
-    assert session.query(Event).count() == 0
+    # Check that the event has also been deleted (CASCADE)
+    assert contract_repo.count() == 0
+    assert event_repo.count() == 0
     print("✅ After deletion Contract: 0 Contract, 0 Event (CASCADE OK)")
-    session.close()
 
 
-def test_delete_employee_sets_null_on_foreign_keys():
+def test_delete_employee_sets_null_on_foreign_keys(
+    test_session, customer_repo, employee_repo, contract_repo, event_repo
+):
     """
-    Test that deleting an Employee sets to NULL the foreign
-    keys in Customer, Contract, Event
-    thanks to ondelete='SET NULL'
+    Test that deleting an Employee sets to NULL the foreign keys
+    in Customer, Contract, Event thanks to ondelete='SET NULL'
     """
     print("\n=== Test CASCADE: Deleting Employee → SET NULL ===")
 
-    # Create employee, customer, contract, event
-    create_employee("Sales Person", "sales3@test.com", "sales", current_user=None)
-    create_employee("Support Person", "support3@test.com", "support", current_user=None)
-    create_customer("Bob Smith", "bob@test.com", current_user=None)
-
-    session = Session()
-    customer = session.query(Customer).first()
-    sales = session.query(Employee).filter_by(role="sales").first()
-    support = session.query(Employee).filter_by(role="support").first()
-
-    # Link the customer to the sales
-    customer.sales_contact_id = sales.id
-    session.commit()
-
-    create_contract(
-        customer.id, sales.id, 4000.0, 2000.0, datetime.now(), current_user=None
+    # Create employees
+    sales = employee_repo.create(
+        {"name": "Sales Person", "email": "sales3@test.com", "role": "sales"}
     )
-    contract = session.query(Contract).first()
-    create_event(
-        contract.id,
-        customer.id,
-        support.id,
-        "Gala",
-        datetime.now(),
-        datetime.now(),
-        "Nice",
-        200,
-        current_user=None,
+    support = employee_repo.create(
+        {"name": "Support Person", "email": "support3@test.com", "role": "support"}
+    )
+
+    # Create customer linked to sales
+    customer = customer_repo.create(
+        {
+            "full_name": "Bob Smith",
+            "email": "bob@test.com",
+            "phone": "0123456789",
+            "sales_contact_id": sales.id,
+        }
+    )
+
+    # Create contract
+    contract = contract_repo.create(
+        {
+            "customer_id": customer.id,
+            "sales_contact_id": sales.id,
+            "total_amount": 4000.0,
+            "remaining_amount": 2000.0,
+            "date_created": datetime.now(),
+            "signed": False,
+        }
+    )
+
+    # Create event
+    event = event_repo.create(
+        {
+            "contract_id": contract.id,
+            "customer_id": customer.id,
+            "support_contact_id": support.id,
+            "name": "Gala",
+            "date_start": datetime.now(),
+            "date_end": datetime.now(),
+            "location": "Nice",
+            "attendees": 200,
+            "notes": "Test gala",
+        }
     )
 
     # Check foreign keys before deletion
-    session.refresh(customer)
-    event = session.query(Event).first()
+    test_session.refresh(customer)
+    test_session.refresh(event)
     print(
-        f"Customer.sales_contact_id = {customer.sales_contact_id}, "
+        f"Before: Customer.sales_contact_id = {customer.sales_contact_id}, "
         f"Event.support_contact_id = {event.support_contact_id}"
     )
 
     # Delete the sales employee
-    sales_id = sales.id
-    support_id = support.id
-    session.close()
-    delete_employee(sales_id, current_user=None)
+    employee_repo.delete(sales.id)
+    test_session.commit()
 
-    # Check that the entities still exist but with FK set to NULL
-    session = Session()
-    assert session.query(Customer).count() == 1, "Customer should still exist"
-    assert session.query(Contract).count() == 1, "Contract should still exist"
-    assert session.query(Event).count() == 1, "Event should still exist"
+    # Check that entities still exist but with FK set to NULL
+    assert customer_repo.count() == 1, "Customer should still exist"
+    assert contract_repo.count() == 1, "Contract should still exist"
+    assert event_repo.count() == 1, "Event should still exist"
 
-    customer = session.query(Customer).first()
-    contract = session.query(Contract).first()
+    # Refresh to get updated values
+    test_session.refresh(customer)
+    test_session.refresh(contract)
+
     assert customer.sales_contact_id is None, "Customer.sales_contact_id should be NULL"
     assert contract.sales_contact_id is None, "Contract.sales_contact_id should be NULL"
     print(
-        "✅ After deletion Sales Employee:"
-        " Customer and Contract exist with FK = NULL (SET NULL OK)"
+        "✅ After deletion Sales: Customer and Contract exist with FK = NULL (SET NULL OK)"
     )
 
     # Delete the support employee
-    session.close()
-    delete_employee(support_id, current_user=None)
+    employee_repo.delete(support.id)
+    test_session.commit()
 
-    session = Session()
-    assert session.query(Event).count() == 1, "Event should still exist"
-    event = session.query(Event).first()
+    # Check event still exists with NULL FK
+    assert event_repo.count() == 1, "Event should still exist"
+    test_session.refresh(event)
     assert event.support_contact_id is None, "Event.support_contact_id should be NULL"
-    print(
-        "✅ After deletion Support Employee: Event exists with FK = NULL (SET NULL OK)"
-    )
-    session.close()
+    print("✅ After deletion Support: Event exists with FK = NULL (SET NULL OK)")
 
 
-def test_employee_deletion_preserves_related_entities():
+def test_employee_deletion_preserves_related_entities(
+    test_session, customer_repo, employee_repo
+):
     """
-    Test that deleting an Employee does not delete related Customers
+    Test that deleting an Employee does not delete related Customers,
+    only sets the foreign key to NULL
     """
     print("\n=== Test: Deleting Employee preserves related entities ===")
 
-    # Create employee and related customer
-    create_employee("Sales Manager", "manager@test.com", "sales", current_user=None)
-    create_customer("Alice Wonder", "alice@test.com", current_user=None)
+    # Create employee and customer
+    employee = employee_repo.create(
+        {"name": "Sales Manager", "email": "manager@test.com", "role": "sales"}
+    )
+    customer = customer_repo.create(
+        {
+            "full_name": "Alice Wonder",
+            "email": "alice@test.com",
+            "phone": "0123456789",
+            "sales_contact_id": employee.id,
+        }
+    )
 
-    session = Session()
-    employee = session.query(Employee).first()
-    customer = session.query(Customer).first()
-
-    # Link the customer to the employee
-    customer.sales_contact_id = employee.id
-    session.commit()
-
-    assert session.query(Customer).count() == 1
+    assert customer_repo.count() == 1
+    assert customer.sales_contact_id == employee.id
     print("✅ Before deletion: 1 Employee, 1 Customer linked")
 
     # Delete the employee
-    employee_id = employee.id
-    session.close()
-    delete_employee(employee_id, current_user=None)
+    employee_repo.delete(employee.id)
+    test_session.commit()
 
     # Check that the Customer still exists
-    session = Session()
-    assert session.query(Employee).count() == 0, "Employee should be deleted"
-    assert session.query(Customer).count() == 1, "Customer should still exist"
-    customer = session.query(Customer).first()
+    assert employee_repo.count() == 0, "Employee should be deleted"
+    assert customer_repo.count() == 1, "Customer should still exist"
+
+    test_session.refresh(customer)
     assert customer.sales_contact_id is None, "Foreign key should be NULL"
     print(
         "✅ After deletion Employee: Customer exists with FK = NULL (Correct behavior)"
     )
-    session.close()
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v", "-s"])

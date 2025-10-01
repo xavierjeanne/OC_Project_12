@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 
-from config import SQLALCHEMY_DATABASE_URL
+from db.config import SQLALCHEMY_DATABASE_URL
 
 
 # Crée l'engine SQLAlchemy pour PostgreSQL

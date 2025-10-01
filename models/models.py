@@ -2,7 +2,7 @@ from sqlalchemy import (Boolean, Column, DateTime, Float, ForeignKey, Integer,
                         String, Text)
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
-from config import engine
+from db.config import engine
 
 Base = declarative_base()
 

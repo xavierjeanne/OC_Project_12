@@ -6,7 +6,7 @@ Defines permissions for each role (sales, support, management)
 from enum import Enum
 from typing import Optional
 
-from models import Employee
+from models.models import Employee
 
 
 class Permission(Enum):
