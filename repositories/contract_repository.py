@@ -43,7 +43,8 @@ class ContractRepository(BaseRepository[Contract]):
         """
         try:
             contracts = self.filter_by(customer_id=customer_id)
-            logger.debug(f"Found {len(contracts)} contracts for customer ID: {customer_id}")
+            logger.debug(f"Found {len(contracts)} contracts for customer ID:"
+                         f"{customer_id}")
             return contracts
         except Exception as e:
             logger.error(f"Error finding contracts by customer: {e}")
@@ -62,7 +63,8 @@ class ContractRepository(BaseRepository[Contract]):
         try:
             contracts = self.filter_by(sales_contact_id=sales_contact_id)
             logger.debug(
-                f"Found {len(contracts)} contracts for sales contact ID: {sales_contact_id}"
+                f"Found {len(contracts)} contracts for sales contact ID:"
+                f"{sales_contact_id}"
             )
             return contracts
         except Exception as e:
@@ -156,7 +158,8 @@ class ContractRepository(BaseRepository[Contract]):
                 .all()
             )
             logger.debug(
-                f"Found {len(contracts)} contracts between {min_amount} and {max_amount}"
+                f"Found {len(contracts)} contracts between"
+                f"{min_amount} and {max_amount}"
             )
             return contracts
         except Exception as e:
@@ -166,12 +169,12 @@ class ContractRepository(BaseRepository[Contract]):
     def get_total_revenue(self) -> Decimal:
         """
         Calculate total revenue from all contracts
-
         Returns:
             Total revenue (sum of all contract amounts)
         """
         try:
-            total = self.db.query(func.sum(Contract.total_amount)).scalar() or Decimal(0)
+            total = self.db.query(func.sum(
+                Contract.total_amount)).scalar() or Decimal(0)
             logger.debug(f"Total revenue: {total}")
             return total
         except Exception as e:
@@ -187,7 +190,8 @@ class ContractRepository(BaseRepository[Contract]):
         """
         try:
             total = (
-                self.db.query(func.sum(Contract.remaining_amount)).scalar() or Decimal(0)
+                self.db.query(func.sum(
+                    Contract.remaining_amount)).scalar() or Decimal(0)
             )
             logger.debug(f"Total outstanding: {total}")
             return total

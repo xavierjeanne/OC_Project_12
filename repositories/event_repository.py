@@ -4,7 +4,7 @@ Repository with specialized event queries
 """
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import List, Optional
 
 from sqlalchemy import func
@@ -80,7 +80,8 @@ class EventRepository(BaseRepository[Event]):
         try:
             events = self.filter_by(support_contact_id=support_contact_id)
             logger.debug(
-                f"Found {len(events)} events for support contact ID: {support_contact_id}"
+                f"Found {len(events)} events for support contact ID:"
+                f"{support_contact_id}"
             )
             return events
         except Exception as e:

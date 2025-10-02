@@ -4,12 +4,10 @@ Demonstrates how to test the repository pattern
 """
 
 import pytest
-from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from models.models import Base, Customer, Employee
-from repositories.base_repository import BaseRepository
+from models.models import Base, Customer
 from repositories.customer_repository import CustomerRepository
 
 
@@ -84,7 +82,8 @@ class TestBaseRepository:
         """Test getting all entities"""
         customer_repo.create(sample_customer_data)
         customer_repo.create(
-            {**sample_customer_data, "email": "jane@example.com", "full_name": "Jane Doe"}
+            {**sample_customer_data, "email": "jane@example.com",
+             "full_name": "Jane Doe"}
         )
 
         results = customer_repo.get_all()
@@ -212,7 +211,8 @@ class TestCustomerRepository:
         """Test finding customers by company"""
         customer_repo.create(sample_customer_data)
         customer_repo.create(
-            {**sample_customer_data, "email": "jane@example.com", "full_name": "Jane"}
+            {**sample_customer_data, "email": "jane@example.com",
+             "full_name": "Jane"}
         )
         customer_repo.create(
             {
@@ -231,7 +231,8 @@ class TestCustomerRepository:
         """Test searching customers by name pattern"""
         customer_repo.create(sample_customer_data)
         customer_repo.create(
-            {**sample_customer_data, "email": "jane@example.com", "full_name": "Jane Doe"}
+            {**sample_customer_data, "email": "jane@example.com",
+             "full_name": "Jane Doe"}
         )
         customer_repo.create(
             {
@@ -264,7 +265,8 @@ class TestCustomerRepository:
 
         # Customer with sales contact (needs sales_contact_id)
         customer_repo.create(
-            {**sample_customer_data, "email": "with_sales@example.com", "sales_contact_id": 1}
+            {**sample_customer_data, "email": "with_sales@example.com",
+             "sales_contact_id": 1}
         )
 
         results = customer_repo.get_customers_without_sales_contact()

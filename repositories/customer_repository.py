@@ -23,7 +23,6 @@ class CustomerRepository(BaseRepository[Customer]):
     def __init__(self, db: Session):
         """
         Initialize customer repository
-        
         Args:
             db: SQLAlchemy database session
         """
@@ -32,10 +31,8 @@ class CustomerRepository(BaseRepository[Customer]):
     def find_by_email(self, email: str) -> Optional[Customer]:
         """
         Find a customer by email address
-        
         Args:
             email: Customer email
-            
         Returns:
             Customer if found, None otherwise
         """
@@ -53,16 +50,15 @@ class CustomerRepository(BaseRepository[Customer]):
     def find_by_company(self, company_name: str) -> List[Customer]:
         """
         Find all customers from a specific company
-        
         Args:
             company_name: Company name
-            
         Returns:
             List of customers
         """
         try:
             customers = self.filter_by(company_name=company_name)
-            logger.debug(f"Found {len(customers)} customers for company: {company_name}")
+            logger.debug(f"Found {len(customers)} customers for company:"
+                         f"{company_name}")
             return customers
         except Exception as e:
             logger.error(f"Error finding customers by company: {e}")
@@ -71,17 +67,16 @@ class CustomerRepository(BaseRepository[Customer]):
     def find_by_sales_contact(self, sales_contact_id: int) -> List[Customer]:
         """
         Find all customers assigned to a specific sales contact
-        
         Args:
             sales_contact_id: Sales employee ID
-            
         Returns:
             List of customers
         """
         try:
             customers = self.filter_by(sales_contact_id=sales_contact_id)
             logger.debug(
-                f"Found {len(customers)} customers for sales contact ID: {sales_contact_id}"
+                f"Found {len(customers)} customers for sales contact ID"
+                f": {sales_contact_id}"
             )
             return customers
         except Exception as e:
@@ -91,10 +86,8 @@ class CustomerRepository(BaseRepository[Customer]):
     def search_by_name(self, name_pattern: str) -> List[Customer]:
         """
         Search customers by name (partial match)
-        
         Args:
             name_pattern: Name pattern to search
-            
         Returns:
             List of matching customers
         """
@@ -113,7 +106,6 @@ class CustomerRepository(BaseRepository[Customer]):
     def get_customers_without_sales_contact(self) -> List[Customer]:
         """
         Get all customers without an assigned sales contact
-        
         Returns:
             List of customers
         """
@@ -132,10 +124,8 @@ class CustomerRepository(BaseRepository[Customer]):
     def email_exists(self, email: str) -> bool:
         """
         Check if an email already exists
-        
         Args:
             email: Email to check
-            
         Returns:
             True if exists, False otherwise
         """
@@ -150,10 +140,8 @@ class CustomerRepository(BaseRepository[Customer]):
     def get_with_contracts(self, customer_id: int) -> Optional[Customer]:
         """
         Get a customer with their contracts eagerly loaded
-        
         Args:
             customer_id: Customer ID
-            
         Returns:
             Customer with contracts if found, None otherwise
         """
@@ -177,10 +165,8 @@ class CustomerRepository(BaseRepository[Customer]):
     def get_with_events(self, customer_id: int) -> Optional[Customer]:
         """
         Get a customer with their events eagerly loaded
-        
         Args:
             customer_id: Customer ID
-            
         Returns:
             Customer with events if found, None otherwise
         """

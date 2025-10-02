@@ -3,18 +3,15 @@ Tests for CASCADE behaviors in database relationships
 Tests that foreign key constraints work properly with CASCADE DELETE and SET NULL
 """
 
-import pytest
 from datetime import datetime
+
+import pytest
 from sqlalchemy.orm import sessionmaker
 
 from db.config import engine
 from models.models import Base, Contract, Customer, Employee, Event
-from repositories import (
-    ContractRepository,
-    CustomerRepository,
-    EmployeeRepository,
-    EventRepository,
-)
+from repositories import (ContractRepository, CustomerRepository,
+                          EmployeeRepository, EventRepository)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -109,7 +106,7 @@ def test_cascade_delete_customer_deletes_contracts_and_events(
     )
 
     # Create an event linked to the contract and the customer
-    event = event_repo.create(
+    event_repo.create(
         {
             "contract_id": contract.id,
             "customer_id": customer.id,
@@ -173,7 +170,7 @@ def test_cascade_delete_contract_deletes_events(
     )
 
     # Create event
-    event = event_repo.create(
+    event_repo.create(
         {
             "contract_id": contract.id,
             "customer_id": customer.id,
@@ -280,7 +277,8 @@ def test_delete_employee_sets_null_on_foreign_keys(
     assert customer.sales_contact_id is None, "Customer.sales_contact_id should be NULL"
     assert contract.sales_contact_id is None, "Contract.sales_contact_id should be NULL"
     print(
-        "✅ After deletion Sales: Customer and Contract exist with FK = NULL (SET NULL OK)"
+        "✅ After deletion Sales:"
+        "Customer and Contract exist with FK = NULL (SET NULL OK)"
     )
 
     # Delete the support employee
