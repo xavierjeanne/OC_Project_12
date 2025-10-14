@@ -1,7 +1,7 @@
-from models.models import Employee
-from repositories.employee_repository import EmployeeRepository
+from models import Employee
+from repositories.employee import EmployeeRepository
 from security.permissions import Permission, require_permission
-from validations.validators import validate_string_not_empty
+from utils.validators import validate_string_not_empty, ValidationError
 
 
 class EmployeeService:
@@ -16,12 +16,14 @@ class EmployeeService:
 
         name = validate_string_not_empty(employee_data["name"], "name")
         email = validate_string_not_empty(employee_data["email"], "email")
-        role = validate_string_not_empty(employee_data["role"], "role")
+        role_id = employee_data.get("role_id")
+        if not role_id:
+            raise ValidationError("role_id is required")
 
         employee = Employee(
             name=name,
             email=email,
-            role=role
+            role_id=int(role_id)
         )
 
         return self.repository.create(employee)
@@ -31,13 +33,15 @@ class EmployeeService:
 
         name = validate_string_not_empty(employee_data["name"], "name")
         email = validate_string_not_empty(employee_data["email"], "email")
-        role = validate_string_not_empty(employee_data["role"], "role")
+        role_id = employee_data.get("role_id")
+        if not role_id:
+            raise ValidationError("role_id is required")
 
         employee = Employee(
             id=employee_id,
             name=name,
             email=email,
-            role=role
+            role_id=int(role_id)
         )
 
         return self.repository.update(employee)

@@ -1,9 +1,9 @@
 
 
-from models.models import Contract
-from repositories.contract_repository import ContractRepository
+from models import Contract
+from repositories.contract import ContractRepository
 from security.permissions import Permission, require_permission
-from validations.validators import validate_string_not_empty
+from utils.validators import validate_string_not_empty
 
 
 class ContractService:

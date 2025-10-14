@@ -7,8 +7,8 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from models.models import Base, Customer
-from repositories.customer_repository import CustomerRepository
+from models import Base, Customer
+from repositories.customer import CustomerRepository
 
 
 # Test fixtures

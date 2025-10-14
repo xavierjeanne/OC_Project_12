@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy.orm import sessionmaker
 
 from db.config import engine
-from models.models import Base, Contract, Customer, Employee, Event
+from models import Base, Contract, Customer, Employee, Event, Role
 from repositories import (ContractRepository, CustomerRepository,
                           EmployeeRepository, EventRepository)
 
@@ -48,6 +48,34 @@ def test_session():
 
 
 @pytest.fixture
+def roles_setup(test_session):
+    """Create basic roles for tests"""
+    # Create roles if they don't exist
+    sales_role = test_session.query(Role).filter_by(name="sales").first()
+    if not sales_role:
+        sales_role = Role(name="sales", description="Sales team")
+        test_session.add(sales_role)
+    
+    management_role = test_session.query(Role).filter_by(name="management").first()
+    if not management_role:
+        management_role = Role(name="management", description="Management team")
+        test_session.add(management_role)
+    
+    support_role = test_session.query(Role).filter_by(name="support").first()
+    if not support_role:
+        support_role = Role(name="support", description="Support team")
+        test_session.add(support_role)
+    
+    test_session.commit()
+    
+    return {
+        "sales": sales_role,
+        "management": management_role,
+        "support": support_role
+    }
+
+
+@pytest.fixture
 def customer_repo(test_session):
     """Customer repository instance"""
     return CustomerRepository(test_session)
@@ -72,7 +100,7 @@ def event_repo(test_session):
 
 
 def test_cascade_delete_customer_deletes_contracts_and_events(
-    test_session, customer_repo, employee_repo, contract_repo, event_repo
+    test_session, customer_repo, employee_repo, contract_repo, event_repo, roles_setup
 ):
     """
     Test that deleting a Customer also deletes its Contracts and Events
@@ -82,10 +110,10 @@ def test_cascade_delete_customer_deletes_contracts_and_events(
 
     # Create employees (sales + support)
     sales = employee_repo.create(
-        {"name": "Sales Person", "email": "sales@test.com", "role": "sales"}
+        {"name": "Sales Person", "email": "sales@test.com", "role_id": roles_setup["sales"].id}
     )
     support = employee_repo.create(
-        {"name": "Support Person", "email": "support@test.com", "role": "support"}
+        {"name": "Support Person", "email": "support@test.com", "role_id": roles_setup["support"].id}
     )
 
     # Create a customer
@@ -138,7 +166,7 @@ def test_cascade_delete_customer_deletes_contracts_and_events(
 
 
 def test_cascade_delete_contract_deletes_events(
-    test_session, customer_repo, employee_repo, contract_repo, event_repo
+    test_session, customer_repo, employee_repo, contract_repo, event_repo, roles_setup
 ):
     """
     Test that deleting a Contract also deletes its Events
@@ -148,10 +176,10 @@ def test_cascade_delete_contract_deletes_events(
 
     # Create entities
     sales = employee_repo.create(
-        {"name": "Sales Person", "email": "sales2@test.com", "role": "sales"}
+        {"name": "Sales Person", "email": "sales2@test.com", "role_id": roles_setup["sales"].id}
     )
     support = employee_repo.create(
-        {"name": "Support Person", "email": "support2@test.com", "role": "support"}
+        {"name": "Support Person", "email": "support2@test.com", "role_id": roles_setup["support"].id}
     )
     customer = customer_repo.create(
         {"full_name": "Jane Doe", "email": "jane@test.com", "phone": "0123456789"}
@@ -200,7 +228,7 @@ def test_cascade_delete_contract_deletes_events(
 
 
 def test_delete_employee_sets_null_on_foreign_keys(
-    test_session, customer_repo, employee_repo, contract_repo, event_repo
+    test_session, customer_repo, employee_repo, contract_repo, event_repo, roles_setup
 ):
     """
     Test that deleting an Employee sets to NULL the foreign keys
@@ -210,10 +238,10 @@ def test_delete_employee_sets_null_on_foreign_keys(
 
     # Create employees
     sales = employee_repo.create(
-        {"name": "Sales Person", "email": "sales3@test.com", "role": "sales"}
+        {"name": "Sales Person", "email": "sales3@test.com", "role_id": roles_setup["sales"].id}
     )
     support = employee_repo.create(
-        {"name": "Support Person", "email": "support3@test.com", "role": "support"}
+        {"name": "Support Person", "email": "support3@test.com", "role_id": roles_setup["support"].id}
     )
 
     # Create customer linked to sales
@@ -293,7 +321,7 @@ def test_delete_employee_sets_null_on_foreign_keys(
 
 
 def test_employee_deletion_preserves_related_entities(
-    test_session, customer_repo, employee_repo
+    test_session, customer_repo, employee_repo, roles_setup
 ):
     """
     Test that deleting an Employee does not delete related Customers,
@@ -303,7 +331,7 @@ def test_employee_deletion_preserves_related_entities(
 
     # Create employee and customer
     employee = employee_repo.create(
-        {"name": "Sales Manager", "email": "manager@test.com", "role": "sales"}
+        {"name": "Sales Manager", "email": "manager@test.com", "role_id": roles_setup["sales"].id}
     )
     customer = customer_repo.create(
         {

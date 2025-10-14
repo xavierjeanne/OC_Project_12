@@ -10,8 +10,8 @@ from typing import List, Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from models.models import Contract
-from repositories.base_repository import BaseRepository
+from models import Contract
+from repositories.base import BaseRepository
 
 logger = logging.getLogger(__name__)
 

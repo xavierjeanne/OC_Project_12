@@ -3,11 +3,11 @@ Repository package for CRM application
 Data access layer using Repository Pattern
 """
 
-from .base_repository import BaseRepository
-from .contract_repository import ContractRepository
-from .customer_repository import CustomerRepository
-from .employee_repository import EmployeeRepository
-from .event_repository import EventRepository
+from .base import BaseRepository
+from .contract import ContractRepository
+from .customer import CustomerRepository
+from .employee import EmployeeRepository
+from .event import EventRepository
 
 __all__ = [
     "BaseRepository",

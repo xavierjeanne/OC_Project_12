@@ -6,11 +6,11 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
-from models.models import Employee
+from models import Employee
 from security.permissions import PermissionError as PermError
-from services.contract_service import ContractService
-from services.employee_service import EmployeeService
-from services.event_service import EventService
+from services.contract import ContractService
+from services.employee import EmployeeService
+from services.event import EventService
 
 # === FIXTURES ===
 
@@ -53,7 +53,7 @@ class TestEmployeeService:
         employee_data = {
             "name": "John Doe",
             "email": "john@test.com",
-            "role": "sales"
+            "role_id": 1
         }
 
         service.create_employee(employee_data, mock_management_user)
@@ -62,7 +62,7 @@ class TestEmployeeService:
         created_employee = mock_repo.create.call_args[0][0]
         assert created_employee.name == "John Doe"
         assert created_employee.email == "john@test.com"
-        assert created_employee.role == "sales"
+        assert created_employee.role_id == 1
 
     def test_create_employee_as_sales_denied(self, mock_sales_user):
         """Sales cannot create employees"""
@@ -72,7 +72,7 @@ class TestEmployeeService:
         employee_data = {
             "name": "John Doe",
             "email": "john@test.com",
-            "role": "sales"
+            "role_id": 1
         }
 
         with pytest.raises(PermError):

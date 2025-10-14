@@ -1,9 +1,9 @@
 
 
-from models.models import Customer
-from repositories.customer_repository import CustomerRepository
+from models import Customer
+from repositories.customer import CustomerRepository
 from security.permissions import Permission, require_permission
-from validations.validators import (validate_email, validate_phone,
+from utils.validators import (validate_email, validate_phone,
                                     validate_string_not_empty)
 
 

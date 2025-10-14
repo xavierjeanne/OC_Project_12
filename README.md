@@ -68,13 +68,13 @@ Copiez `env.example` en `.env.test` et renseignez vos identifiants pour les test
 Lancez la commande suivante pour créer toutes les tables :
 
 ```powershell
-python models.py
+python init_db.py
 ```
 
-## 6. Lancer les tests unitaires avec pytest
+## 6. Lancer les tests avec pytest
 
 ```powershell
-pytest/tests/unit
+pytest/tests
 ```
 
 

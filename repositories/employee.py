@@ -8,8 +8,8 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session, joinedload
 
-from models.models import Employee
-from repositories.base_repository import BaseRepository
+from models import Employee
+from repositories.base import BaseRepository
 
 logger = logging.getLogger(__name__)
 

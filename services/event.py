@@ -1,7 +1,7 @@
-from models.models import Event
-from repositories.event_repository import EventRepository
+from models import Event
+from repositories.event import EventRepository
 from security.permissions import Permission, require_permission
-from validations.validators import validate_string_not_empty
+from utils.validators import validate_string_not_empty
 
 
 class EventService:
