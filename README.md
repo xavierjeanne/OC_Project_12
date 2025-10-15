@@ -71,10 +71,7 @@ Lancez la commande suivante pour créer toutes les tables :
 python init_db.py
 ```
 
-## 6. Lancer les tests avec pytest
+## 6. Creer un premier utilisateur qui sera l admin systeme du crm
 
-```powershell
-pytest/tests
-```
 
 

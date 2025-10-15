@@ -5,7 +5,7 @@ Validations for emails, amounts, dates, etc.
 
 import re
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Tuple
 
 
 class ValidationError(Exception):
@@ -244,3 +244,31 @@ def validate_string_not_empty(value: str, field_name: str = "field") -> str:
         raise ValidationError(f"The {field_name} field is required and cannot be empty")
 
     return value.strip()
+
+
+def validate_password(password: str) -> Tuple[bool, str]:
+    """
+    Validate password meets security requirements
+
+    Args:
+        password: Plain text password to validate
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long"
+
+    if not any(c.isupper() for c in password):
+        return False, "Password must contain at least one uppercase letter"
+
+    if not any(c.islower() for c in password):
+        return False, "Password must contain at least one lowercase letter"
+
+    if not any(c.isdigit() for c in password):
+        return False, "Password must contain at least one digit"
+
+    if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in password):
+        return False, "Password must contain at least one special character"
+
+    return True, "Password is valid"

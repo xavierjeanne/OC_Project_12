@@ -2,7 +2,6 @@
 Base configuration for SQLAlchemy models
 """
 
-from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from db.config import engine
 

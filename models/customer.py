@@ -9,7 +9,7 @@ from models.base import Base
 
 class Customer(Base):
     __tablename__ = "customers"
-    
+
     id = Column(Integer, primary_key=True)
     full_name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
@@ -27,6 +27,8 @@ class Customer(Base):
     events = relationship(
         "Event", back_populates="customer", cascade="all, delete-orphan"
     )
-    
+
     def __repr__(self):
-        return f"<Customer(id={self.id}, name='{self.full_name}', email='{self.email}')>"
+        message = (f"id={self.id}, name='{self.full_name}',"
+                   f" email='{self.email}'")
+        return f"<Customer({message})>"

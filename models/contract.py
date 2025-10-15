@@ -9,7 +9,7 @@ from models.base import Base
 
 class Contract(Base):
     __tablename__ = "contracts"
-    
+
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey("customers.id", ondelete="CASCADE"))
     sales_contact_id = Column(Integer, ForeignKey("employees.id", ondelete="SET NULL"))
@@ -24,6 +24,8 @@ class Contract(Base):
     events = relationship(
         "Event", back_populates="contract", cascade="all, delete-orphan"
     )
-    
+
     def __repr__(self):
-        return f"<Contract(id={self.id}, customer_id={self.customer_id}, amount={self.total_amount})>"
+        message = (f"id={self.id}, customer_id={self.customer_id},"
+                   f" amount={self.total_amount}")
+        return f"<Contract({message})>"

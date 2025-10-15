@@ -10,7 +10,7 @@ from .event import EventService
 
 __all__ = [
     "CustomerService",
-    "EmployeeService", 
+    "EmployeeService",
     "ContractService",
     "EventService",
 ]

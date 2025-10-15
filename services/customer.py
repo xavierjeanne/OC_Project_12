@@ -4,11 +4,11 @@ from models import Customer
 from repositories.customer import CustomerRepository
 from security.permissions import Permission, require_permission
 from utils.validators import (validate_email, validate_phone,
-                                    validate_string_not_empty)
+                              validate_string_not_empty)
 
 
 class CustomerService:
-    def __init__(self, customer_repository : CustomerRepository):
+    def __init__(self, customer_repository: CustomerRepository):
         self.repository = customer_repository
 
     def get_customer(self, customer_id):
