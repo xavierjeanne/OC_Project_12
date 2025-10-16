@@ -9,7 +9,10 @@ from sqlalchemy.orm import sessionmaker
 
 from db.config import engine
 from models import Base, Customer, Employee, Role, Contract, Event
-from repositories import CustomerRepository, EmployeeRepository, ContractRepository, EventRepository
+from repositories import (CustomerRepository,
+                          EmployeeRepository,
+                          ContractRepository,
+                          EventRepository)
 from services.auth import AuthService
 
 
@@ -48,12 +51,12 @@ def coverage_roles(coverage_session):
     if not sales_role:
         sales_role = Role(name="sales", description="Sales team")
         coverage_session.add(sales_role)
-    
+
     support_role = coverage_session.query(Role).filter_by(name="support").first()
     if not support_role:
         support_role = Role(name="support", description="Support team")
         coverage_session.add(support_role)
-    
+
     coverage_session.commit()
     return {"sales": sales_role, "support": support_role}
 
@@ -91,25 +94,28 @@ def auth_service_coverage():
 class TestCustomerRepositoryCoverage:
     """Tests pour améliorer la couverture du CustomerRepository"""
 
-    def test_find_by_sales_contact(self, customer_repo_coverage, employee_repo_coverage, 
-                                   coverage_roles, auth_service_coverage):
+    def test_find_by_sales_contact(self,
+                                   customer_repo_coverage,
+                                   employee_repo_coverage,
+                                   coverage_roles,
+                                   auth_service_coverage):
         """Test find_by_sales_contact method"""
         # Créer un employé sales
         sales_data = auth_service_coverage.create_employee_with_password(
-            name="Sales Rep", email="sales@test.com", 
-            role_id=coverage_roles["sales"].id, password="TestPass123!"
+            name="Sales Rep", email="sales@test.com",
+            role_id=coverage_roles["sales"].id, password="TestPassword123!"
         )
         sales_employee = employee_repo_coverage.get_by_id(sales_data["id"])
 
         # Créer des clients liés au sales
         customer1 = customer_repo_coverage.create({
-            "full_name": "Client A", 
+            "full_name": "Client A",
             "email": "clienta@test.com",
             "phone": "0123456789",
             "sales_contact_id": sales_employee.id
         })
         customer2 = customer_repo_coverage.create({
-            "full_name": "Client B", 
+            "full_name": "Client B",
             "email": "clientb@test.com",
             "phone": "0123456790",
             "sales_contact_id": sales_employee.id
@@ -117,7 +123,7 @@ class TestCustomerRepositoryCoverage:
 
         # Test la méthode
         customers = customer_repo_coverage.find_by_sales_contact(sales_employee.id)
-        
+
         assert len(customers) == 2
         assert customer1 in customers
         assert customer2 in customers
@@ -132,7 +138,7 @@ class TestCustomerRepositoryCoverage:
         # Créer des clients avec noms similaires
         customer_repo_coverage.create({
             "full_name": "Jean Dupont",
-            "email": "jean@test.com", 
+            "email": "jean@test.com",
             "phone": "0123456789"
         })
         customer_repo_coverage.create({
@@ -141,7 +147,7 @@ class TestCustomerRepositoryCoverage:
             "phone": "0123456790"
         })
         customer_repo_coverage.create({
-            "full_name": "Pierre Durand", 
+            "full_name": "Pierre Durand",
             "email": "pierre@test.com",
             "phone": "0123456791"
         })
@@ -149,7 +155,7 @@ class TestCustomerRepositoryCoverage:
         # Test recherche partielle
         results = customer_repo_coverage.search_by_name("Jean")
         assert len(results) == 2
-        
+
         results = customer_repo_coverage.search_by_name("Dupont")
         assert len(results) == 1
         assert results[0].full_name == "Jean Dupont"
@@ -210,7 +216,7 @@ class TestCustomerRepositoryCoverage:
             "phone": "0123456789",
             "company_name": "Test Company"
         })
-        
+
         customers = customer_repo_coverage.find_by_company("Test Company")
         assert len(customers) >= 1
         assert customers[0].company_name == "Test Company"
@@ -228,12 +234,12 @@ class TestCustomerRepositoryCoverage:
             "email": "error@test.com",
             "phone": "0123456789"
         })
-        
+
         # Test recherche réussie
         found_customer = customer_repo_coverage.find_by_email("error@test.com")
         assert found_customer is not None
         assert found_customer.email == "error@test.com"
-        
+
         # Test recherche échouée
         not_found = customer_repo_coverage.find_by_email("notfound@test.com")
         assert not_found is None
@@ -242,13 +248,17 @@ class TestCustomerRepositoryCoverage:
 class TestContractRepositoryCoverage:
     """Tests pour améliorer la couverture du ContractRepository"""
 
-    def test_find_by_customer(self, contract_repo_coverage, customer_repo_coverage, 
-                             employee_repo_coverage, coverage_roles, auth_service_coverage):
+    def test_find_by_customer(self,
+                              contract_repo_coverage,
+                              customer_repo_coverage,
+                              employee_repo_coverage,
+                              coverage_roles,
+                              auth_service_coverage):
         """Test find_by_customer method"""
         # Créer employé sales
         sales_data = auth_service_coverage.create_employee_with_password(
             name="Sales Rep", email="sales_contract@test.com",
-            role_id=coverage_roles["sales"].id, password="TestPass123!"
+            role_id=coverage_roles["sales"].id, password="TestPassword123!"
         )
         sales_employee = employee_repo_coverage.get_by_id(sales_data["id"])
 
@@ -283,20 +293,24 @@ class TestContractRepositoryCoverage:
         assert contract1 in contracts
         assert contract2 in contracts
 
-    def test_find_by_sales_contact(self, contract_repo_coverage, customer_repo_coverage,
-                                  employee_repo_coverage, coverage_roles, auth_service_coverage):
+    def test_find_by_sales_contact(self,
+                                   contract_repo_coverage,
+                                   customer_repo_coverage,
+                                   employee_repo_coverage,
+                                   coverage_roles,
+                                   auth_service_coverage):
         """Test find_by_sales_contact method"""
         # Créer employé sales
         sales_data = auth_service_coverage.create_employee_with_password(
             name="Sales Contact", email="sales_contact@test.com",
-            role_id=coverage_roles["sales"].id, password="TestPass123!"
+            role_id=coverage_roles["sales"].id, password="TestPassword123!"
         )
         sales_employee = employee_repo_coverage.get_by_id(sales_data["id"])
 
         # Créer client
         customer = customer_repo_coverage.create({
             "full_name": "Client Sales",
-            "email": "client_sales@test.com", 
+            "email": "client_sales@test.com",
             "phone": "0123456789"
         })
 
@@ -315,13 +329,17 @@ class TestContractRepositoryCoverage:
         assert len(contracts) >= 1
         assert contract in contracts
 
-    def test_find_signed(self, contract_repo_coverage, customer_repo_coverage,
-                        employee_repo_coverage, coverage_roles, auth_service_coverage):
+    def test_find_signed(self,
+                         contract_repo_coverage,
+                         customer_repo_coverage,
+                         employee_repo_coverage,
+                         coverage_roles,
+                         auth_service_coverage):
         """Test find_signed method"""
         # Créer employé et client
         sales_data = auth_service_coverage.create_employee_with_password(
             name="Sales Signed", email="sales_signed@test.com",
-            role_id=coverage_roles["sales"].id, password="TestPass123!"
+            role_id=coverage_roles["sales"].id, password="TestPassword123!"
         )
         sales_employee = employee_repo_coverage.get_by_id(sales_data["id"])
 
@@ -355,13 +373,17 @@ class TestContractRepositoryCoverage:
         assert signed_contract in signed_contracts
         assert unsigned_contract not in signed_contracts
 
-    def test_find_unsigned(self, contract_repo_coverage, customer_repo_coverage,
-                          employee_repo_coverage, coverage_roles, auth_service_coverage):
+    def test_find_unsigned(self,
+                           contract_repo_coverage,
+                           customer_repo_coverage,
+                           employee_repo_coverage,
+                           coverage_roles,
+                           auth_service_coverage):
         """Test find_unsigned method"""
         # Créer employé et client
         sales_data = auth_service_coverage.create_employee_with_password(
             name="Sales Unsigned", email="sales_unsigned@test.com",
-            role_id=coverage_roles["sales"].id, password="TestPass123!"
+            role_id=coverage_roles["sales"].id, password="TestPassword123!"
         )
         sales_employee = employee_repo_coverage.get_by_id(sales_data["id"])
 
@@ -390,14 +412,17 @@ class TestContractRepositoryCoverage:
 class TestEmployeeRepositoryCoverage:
     """Tests pour améliorer la couverture du EmployeeRepository"""
 
-    def test_find_by_email(self, employee_repo_coverage, coverage_roles, auth_service_coverage):
+    def test_find_by_email(self,
+                           employee_repo_coverage,
+                           coverage_roles,
+                           auth_service_coverage):
         """Test find_by_email method"""
         # Créer un employé
-        employee_data = auth_service_coverage.create_employee_with_password(
+        auth_service_coverage.create_employee_with_password(
             name="Test Employee", email="test_employee@test.com",
-            role_id=coverage_roles["sales"].id, password="TestPass123!"
+            role_id=coverage_roles["sales"].id, password="TestPassword123!"
         )
-        
+
         # Test recherche par email
         found_employee = employee_repo_coverage.find_by_email("test_employee@test.com")
         assert found_employee is not None
@@ -409,55 +434,67 @@ class TestEmployeeRepositoryCoverage:
         found_employee = employee_repo_coverage.find_by_email("nonexistent@test.com")
         assert found_employee is None
 
-    def test_find_by_role(self, employee_repo_coverage, coverage_roles, auth_service_coverage):
-        """Test find_by_role method"""  
+    def test_find_by_role(self,
+                          employee_repo_coverage,
+                          coverage_roles,
+                          auth_service_coverage):
+        """Test find_by_role method"""
         # Test la méthode même si elle ne fonctionne pas parfaitement
         # car elle utilise filter_by(role=role) mais Employee n'a pas de colonne role
-        
+
         # Appeler la méthode pour couvrir le code
         sales_employees = employee_repo_coverage.find_by_role("sales")
         support_employees = employee_repo_coverage.find_by_role("support")
-        
+
         # Ces listes seront vides car la colonne 'role' n'existe pas dans Employee
         # mais cela couvre quand même le code de la méthode
         assert isinstance(sales_employees, list)
         assert isinstance(support_employees, list)
 
-    def test_get_sales_team(self, employee_repo_coverage, coverage_roles, auth_service_coverage):
+    def test_get_sales_team(self,
+                            employee_repo_coverage,
+                            coverage_roles,
+                            auth_service_coverage):
         """Test get_sales_team method"""
         # Test la méthode même si elle retourne une liste vide
         # car elle utilise find_by_role("sales") qui ne fonctionne pas parfaitement
-        
+
         sales_team = employee_repo_coverage.get_sales_team()
-        # La liste sera vide à cause du problème dans find_by_role, mais cela couvre le code
+
         assert isinstance(sales_team, list)
 
-    def test_get_support_team(self, employee_repo_coverage, coverage_roles, auth_service_coverage):
+    def test_get_support_team(self,
+                              employee_repo_coverage,
+                              coverage_roles,
+                              auth_service_coverage):
         """Test get_support_team method"""
         # Test la méthode même si elle retourne une liste vide
         support_team = employee_repo_coverage.get_support_team()
         assert isinstance(support_team, list)
 
-    def test_search_by_name(self, employee_repo_coverage, coverage_roles, auth_service_coverage):
+    def test_search_by_name(self,
+                            employee_repo_coverage,
+                            coverage_roles,
+                            auth_service_coverage):
         """Test search_by_name method"""
         # Créer employés avec noms similaires
         auth_service_coverage.create_employee_with_password(
             name="Jean Dupont", email="jean.dupont@test.com",
-            role_id=coverage_roles["sales"].id, password="TestPass123!"
+            role_id=coverage_roles["sales"].id, password="TestPassword123!"
         )
         auth_service_coverage.create_employee_with_password(
             name="Jean Martin", email="jean.martin@test.com",
-            role_id=coverage_roles["support"].id, password="TestPass123!"
+            role_id=coverage_roles["support"].id, password="TestPassword123!"
         )
         auth_service_coverage.create_employee_with_password(
             name="Pierre Durand", email="pierre.durand@test.com",
-            role_id=coverage_roles["sales"].id, password="TestPass123!"
+            role_id=coverage_roles["sales"].id, password="TestPassword123!"
         )
-        
+
         # Test recherche partielle
         jean_employees = employee_repo_coverage.search_by_name("Jean")
         assert len(jean_employees) >= 2
-        
+
         dupont_employees = employee_repo_coverage.search_by_name("Dupont")
         assert len(dupont_employees) >= 1
         assert dupont_employees[0].name == "Jean Dupont"
@@ -467,42 +504,51 @@ class TestEmployeeRepositoryCoverage:
         results = employee_repo_coverage.search_by_name("Inexistant")
         assert results == []
 
-    def test_email_exists(self, employee_repo_coverage, coverage_roles, auth_service_coverage):
+    def test_email_exists(self,
+                          employee_repo_coverage,
+                          coverage_roles,
+                          auth_service_coverage):
         """Test email_exists method"""
         # Créer un employé
         auth_service_coverage.create_employee_with_password(
             name="Email Test", email="email_test@test.com",
-            role_id=coverage_roles["sales"].id, password="TestPass123!"
+            role_id=coverage_roles["sales"].id, password="TestPassword123!"
         )
-        
+
         # Test email existant
         assert employee_repo_coverage.email_exists("email_test@test.com") is True
-        
+
         # Test email inexistant
         assert employee_repo_coverage.email_exists("nonexistent@test.com") is False
 
-    def test_get_with_role(self, employee_repo_coverage, coverage_roles, auth_service_coverage):
+    def test_get_with_role(self,
+                           employee_repo_coverage,
+                           coverage_roles,
+                           auth_service_coverage):
         """Test get_with_role method (si elle existe)"""
         # Créer un employé
         employee_data = auth_service_coverage.create_employee_with_password(
             name="Role Test", email="role_test@test.com",
-            role_id=coverage_roles["sales"].id, password="TestPass123!"
+            role_id=coverage_roles["sales"].id, password="TestPassword123!"
         )
-        
+
         # Test récupération avec rôle
         employee = employee_repo_coverage.get_by_id(employee_data["id"])
         assert employee is not None
         assert employee.role_id == coverage_roles["sales"].id
 
-    def test_error_handling_methods(self, employee_repo_coverage, coverage_roles, auth_service_coverage):
+    def test_error_handling_methods(self,
+                                    employee_repo_coverage,
+                                    coverage_roles,
+                                    auth_service_coverage):
         """Test gestion d'erreurs dans les méthodes"""
         # Test les méthodes pour couvrir le code
         sales_team = employee_repo_coverage.get_sales_team()
         support_team = employee_repo_coverage.get_support_team()
-        
+
         assert isinstance(sales_team, list)
         assert isinstance(support_team, list)
-        
+
         # Test get_management_team si elle existe
         try:
             management_team = employee_repo_coverage.get_management_team()
@@ -514,29 +560,33 @@ class TestEmployeeRepositoryCoverage:
 class TestEventRepositoryCoverage:
     """Tests pour améliorer la couverture du EventRepository"""
 
-    def test_find_by_contract(self, event_repo_coverage, contract_repo_coverage, 
-                             customer_repo_coverage, employee_repo_coverage, 
-                             coverage_roles, auth_service_coverage):
+    def test_find_by_contract(self,
+                              event_repo_coverage,
+                              contract_repo_coverage,
+                              customer_repo_coverage,
+                              employee_repo_coverage,
+                              coverage_roles,
+                              auth_service_coverage):
         """Test find_by_contract method"""
         # Créer les entités nécessaires
         sales_data = auth_service_coverage.create_employee_with_password(
             name="Sales Event", email="sales_event@test.com",
-            role_id=coverage_roles["sales"].id, password="TestPass123!"
+            role_id=coverage_roles["sales"].id, password="TestPassword123!"
         )
         support_data = auth_service_coverage.create_employee_with_password(
-            name="Support Event", email="support_event@test.com", 
-            role_id=coverage_roles["support"].id, password="TestPass123!"
+            name="Support Event", email="support_event@test.com",
+            role_id=coverage_roles["support"].id, password="TestPassword123!"
         )
-        
+
         sales_employee = employee_repo_coverage.get_by_id(sales_data["id"])
         support_employee = employee_repo_coverage.get_by_id(support_data["id"])
-        
+
         customer = customer_repo_coverage.create({
             "full_name": "Client Event",
             "email": "client_event@test.com",
             "phone": "0123456789"
         })
-        
+
         contract = contract_repo_coverage.create({
             "customer_id": customer.id,
             "sales_contact_id": sales_employee.id,
@@ -545,7 +595,7 @@ class TestEventRepositoryCoverage:
             "date_created": datetime.now(),
             "signed": True
         })
-        
+
         # Créer un événement
         event = event_repo_coverage.create({
             "contract_id": contract.id,
@@ -558,35 +608,39 @@ class TestEventRepositoryCoverage:
             "attendees": 50,
             "notes": "Test event notes"
         })
-        
+
         # Test recherche par contrat
         events = event_repo_coverage.find_by_contract(contract.id)
         assert len(events) >= 1
         assert event in events
 
-    def test_find_by_customer(self, event_repo_coverage, contract_repo_coverage,
-                             customer_repo_coverage, employee_repo_coverage,
-                             coverage_roles, auth_service_coverage):
+    def test_find_by_customer(self,
+                              event_repo_coverage,
+                              contract_repo_coverage,
+                              customer_repo_coverage,
+                              employee_repo_coverage,
+                              coverage_roles,
+                              auth_service_coverage):
         """Test find_by_customer method"""
         # Utiliser les entités créées dans le test précédent ou en créer de nouvelles
         sales_data = auth_service_coverage.create_employee_with_password(
             name="Sales Customer Event", email="sales_cust_event@test.com",
-            role_id=coverage_roles["sales"].id, password="TestPass123!"
+            role_id=coverage_roles["sales"].id, password="TestPassword123!"
         )
         support_data = auth_service_coverage.create_employee_with_password(
             name="Support Customer Event", email="support_cust_event@test.com",
-            role_id=coverage_roles["support"].id, password="TestPass123!"
+            role_id=coverage_roles["support"].id, password="TestPassword123!"
         )
-        
+
         sales_employee = employee_repo_coverage.get_by_id(sales_data["id"])
         support_employee = employee_repo_coverage.get_by_id(support_data["id"])
-        
+
         customer = customer_repo_coverage.create({
             "full_name": "Client Customer Event",
-            "email": "client_cust_event@test.com", 
+            "email": "client_cust_event@test.com",
             "phone": "0123456789"
         })
-        
+
         contract = contract_repo_coverage.create({
             "customer_id": customer.id,
             "sales_contact_id": sales_employee.id,
@@ -595,7 +649,7 @@ class TestEventRepositoryCoverage:
             "date_created": datetime.now(),
             "signed": True
         })
-        
+
         event = event_repo_coverage.create({
             "contract_id": contract.id,
             "customer_id": customer.id,
@@ -607,35 +661,39 @@ class TestEventRepositoryCoverage:
             "attendees": 75,
             "notes": "Customer event notes"
         })
-        
+
         # Test recherche par client
         events = event_repo_coverage.find_by_customer(customer.id)
         assert len(events) >= 1
         assert event in events
 
-    def test_find_by_support_contact(self, event_repo_coverage, contract_repo_coverage,
-                                    customer_repo_coverage, employee_repo_coverage,
-                                    coverage_roles, auth_service_coverage):
+    def test_find_by_support_contact(self,
+                                     event_repo_coverage,
+                                     contract_repo_coverage,
+                                     customer_repo_coverage,
+                                     employee_repo_coverage,
+                                     coverage_roles,
+                                     auth_service_coverage):
         """Test find_by_support_contact method"""
         # Créer les entités
         sales_data = auth_service_coverage.create_employee_with_password(
             name="Sales Support Event", email="sales_sup_event@test.com",
-            role_id=coverage_roles["sales"].id, password="TestPass123!"
+            role_id=coverage_roles["sales"].id, password="TestPassword123!"
         )
         support_data = auth_service_coverage.create_employee_with_password(
             name="Support Contact Event", email="support_contact_event@test.com",
-            role_id=coverage_roles["support"].id, password="TestPass123!"
+            role_id=coverage_roles["support"].id, password="TestPassword123!"
         )
-        
+
         sales_employee = employee_repo_coverage.get_by_id(sales_data["id"])
         support_employee = employee_repo_coverage.get_by_id(support_data["id"])
-        
+
         customer = customer_repo_coverage.create({
             "full_name": "Client Support Event",
             "email": "client_sup_event@test.com",
             "phone": "0123456789"
         })
-        
+
         contract = contract_repo_coverage.create({
             "customer_id": customer.id,
             "sales_contact_id": sales_employee.id,
@@ -644,7 +702,7 @@ class TestEventRepositoryCoverage:
             "date_created": datetime.now(),
             "signed": True
         })
-        
+
         event = event_repo_coverage.create({
             "contract_id": contract.id,
             "customer_id": customer.id,
@@ -652,11 +710,11 @@ class TestEventRepositoryCoverage:
             "name": "Support Event",
             "date_start": datetime.now(),
             "date_end": datetime.now() + timedelta(hours=4),
-            "location": "Support Location", 
+            "location": "Support Location",
             "attendees": 100,
             "notes": "Support event notes"
         })
-        
+
         # Test recherche par support contact
         events = event_repo_coverage.find_by_support_contact(support_employee.id)
         assert len(events) >= 1

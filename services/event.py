@@ -1,6 +1,6 @@
 from models import Event
 from repositories.event import EventRepository
-from security.permissions import Permission, require_permission
+from utils.permissions import Permission, require_permission
 from utils.validators import validate_string_not_empty
 
 

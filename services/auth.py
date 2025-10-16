@@ -116,7 +116,7 @@ class AuthService:
                         self,
                         employee_number: str,
                         password: str
-                        ) -> Tuple[bool, Optional[Employee], Optional[Employee], str]:
+                        ) -> Tuple[bool, Optional[dict], str]:
         """
         Authenticate a user with employee number and password
 
@@ -125,7 +125,7 @@ class AuthService:
             password: Plain text password
 
         Returns:
-            Tuple of (success, employee_object, message)
+            Tuple of (success, employee_data_dict, message)
         """
         session = Session()
         try:
@@ -161,7 +161,18 @@ class AuthService:
             # Success - reset failed attempts
             self.reset_failed_attempts(employee, session)
             logger.info(f"Successful login for {employee_number}")
-            return True, employee, "Login successful"
+
+            # Extract employee data while in session to avoid detached instance issues
+            employee_data = {
+                "id": employee.id,
+                "employee_number": employee.employee_number,
+                "name": employee.name,
+                "email": employee.email,
+                "role": employee.role,  # employee.role is already the role name
+                "role_id": employee.role_id
+            }
+
+            return True, employee_data, "Login successful"
 
         finally:
             session.close()

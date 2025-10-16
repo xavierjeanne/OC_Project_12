@@ -71,7 +71,13 @@ Lancez la commande suivante pour créer toutes les tables :
 python init_db.py
 ```
 
-## 6. Creer un premier utilisateur qui sera l admin systeme du crm
+Creer un premier utilisateur qui sera l admin systeme du crm
 
+## 6. Se connecter a l application 
+
+
+```powershell
+python epicevents.py login
+```
 
 

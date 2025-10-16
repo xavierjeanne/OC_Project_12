@@ -102,12 +102,12 @@ ROLE_PERMISSIONS = {
 }
 
 
-def has_permission(employee: Optional[Employee], permission: Permission) -> bool:
+def has_permission(employee, permission: Permission) -> bool:
     """
     Checks if an employee has a given permission
 
     Args:
-        employee: The employee to check (can be None)
+        employee: The employee to check (Employee object or dict, can be None)
         permission: The permission to check
 
     Returns:
@@ -116,7 +116,12 @@ def has_permission(employee: Optional[Employee], permission: Permission) -> bool
     if employee is None:
         return False
 
-    role = employee.role.lower() if employee.role else None
+    # Handle both Employee objects and dicts
+    if isinstance(employee, dict):
+        role = employee.get('role', '').lower()
+    else:
+        # Employee object
+        role = employee.role.lower() if employee.role else None
 
     if role not in ROLE_PERMISSIONS:
         return False
@@ -124,12 +129,12 @@ def has_permission(employee: Optional[Employee], permission: Permission) -> bool
     return permission in ROLE_PERMISSIONS[role]
 
 
-def require_permission(employee: Optional[Employee], permission: Permission) -> None:
+def require_permission(employee, permission: Permission) -> None:
     """
     Checks that an employee has a permission, otherwise raises an exception
 
     Args:
-        employee: The employee to check
+        employee: The employee to check (Employee object or dict)
         permission: The required permission
 
     Raises:
@@ -139,8 +144,17 @@ def require_permission(employee: Optional[Employee], permission: Permission) -> 
         raise PermissionError("Authentication required")
 
     if not has_permission(employee, permission):
+        # Handle both Employee objects and dicts
+        if isinstance(employee, dict):
+            name = employee.get('name', 'Unknown')
+            role = employee.get('role', 'Unknown')
+        else:
+            # Employee object
+            name = employee.name
+            role = employee.role
+
         raise PermissionError(
-            f"Employee {employee.name} (role: {employee.role}) "
+            f"Employee {name} (role: {role}) "
             f"does not have permission '{permission.value}'"
         )
 

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, Mock
 import pytest
 
 from models import Employee
-from security.permissions import PermissionError as PermError
+from utils.permissions import PermissionError as PermError
 from services.contract import ContractService
 from services.employee import EmployeeService
 from services.event import EventService

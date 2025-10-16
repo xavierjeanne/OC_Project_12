@@ -94,7 +94,10 @@ def auth_service():
     return AuthService()
 
 
-def create_test_employee_with_auth(auth_service, name, email, role_id, password="TestPass123!"):
+def create_test_employee_with_auth(auth_service,
+                                   name, email,
+                                   role_id,
+                                   password="TestPassword123!"):
     """Helper to create employee with authentication"""
     return auth_service.create_employee_with_password(
         name=name,
@@ -117,7 +120,13 @@ def event_repo(test_session):
 
 
 def test_cascade_delete_customer_deletes_contracts_and_events(
-    test_session, customer_repo, employee_repo, contract_repo, event_repo, roles_setup, auth_service
+    test_session,
+    customer_repo,
+    employee_repo,
+    contract_repo,
+    event_repo,
+    roles_setup,
+    auth_service
 ):
     """
     Test that deleting a Customer also deletes its Contracts and Events
@@ -132,7 +141,7 @@ def test_cascade_delete_customer_deletes_contracts_and_events(
     support_data = create_test_employee_with_auth(
         auth_service, "Support Person", "support@test.com", roles_setup["support"].id
     )
-    
+
     # Get employee objects from database
     sales = employee_repo.get_by_id(sales_data["id"])
     support = employee_repo.get_by_id(support_data["id"])
@@ -187,7 +196,13 @@ def test_cascade_delete_customer_deletes_contracts_and_events(
 
 
 def test_cascade_delete_contract_deletes_events(
-    test_session, customer_repo, employee_repo, contract_repo, event_repo, roles_setup, auth_service
+    test_session,
+    customer_repo,
+    employee_repo,
+    contract_repo,
+    event_repo,
+    roles_setup,
+    auth_service
 ):
     """
     Test that deleting a Contract also deletes its Events
@@ -202,7 +217,7 @@ def test_cascade_delete_contract_deletes_events(
     support_data = create_test_employee_with_auth(
         auth_service, "Support Person", "support2@test.com", roles_setup["support"].id
     )
-    
+
     # Get employee objects from database
     sales = employee_repo.get_by_id(sales_data["id"])
     support = employee_repo.get_by_id(support_data["id"])
@@ -253,7 +268,13 @@ def test_cascade_delete_contract_deletes_events(
 
 
 def test_delete_employee_sets_null_on_foreign_keys(
-    test_session, customer_repo, employee_repo, contract_repo, event_repo, roles_setup, auth_service
+    test_session,
+    customer_repo,
+    employee_repo,
+    contract_repo,
+    event_repo,
+    roles_setup,
+    auth_service
 ):
     """
     Test that deleting an Employee sets to NULL the foreign keys
@@ -268,7 +289,7 @@ def test_delete_employee_sets_null_on_foreign_keys(
     support_data = create_test_employee_with_auth(
         auth_service, "Support Person", "support3@test.com", roles_setup["support"].id
     )
-    
+
     # Get employee objects from database
     sales = employee_repo.get_by_id(sales_data["id"])
     support = employee_repo.get_by_id(support_data["id"])
