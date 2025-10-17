@@ -158,7 +158,8 @@ class TestJWTService:
         mock_employee.role = "admin"  # This is the role name
         mock_employee.role_id = 4
 
-        mock_session.query.return_value.filter_by.return_value.first.return_value == mock_employee
+        query_result = mock_session.query.return_value.filter_by.return_value
+        query_result.first.return_value = mock_employee
 
         # Create refresh token
         refresh_token = jwt_service.create_refresh_token(sample_employee_data)

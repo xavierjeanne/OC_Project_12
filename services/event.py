@@ -64,5 +64,14 @@ class EventService:
         require_permission(current_user, Permission.DELETE_EVENT)
         return self.repository.delete(event_id)
 
-    def list_events(self):
-        return self.repository.list_all()
+    def list_events(self, current_user):
+        """ list of all events by role and permissions"""
+        require_permission(current_user, Permission.READ_EVENT)
+        if current_user['role'] in ['management', 'sales', 'admin']:
+            # managment see all events
+            return self.repository.get_all()
+        elif current_user['role'] == 'support':
+            # support see only assignated event
+            return self.repository.find_by_support_contact(current_user['id'])
+        else:
+            return []

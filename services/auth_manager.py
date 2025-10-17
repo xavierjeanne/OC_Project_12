@@ -140,7 +140,7 @@ class AuthenticationManager:
                     "role": payload["role"],
                     "role_id": payload["role_id"]
                 }
-                print("🔄 Token refreshed automatically")
+                print("Token refreshed automatically")
                 return self.current_user
 
         # All tokens expired, clean up
@@ -156,7 +156,7 @@ class AuthenticationManager:
         """
         user = self.get_current_user()
         if not user:
-            print("🚨 You must be logged in to perform this action.")
+            print("You must be logged in to perform this action.")
             print("   Use: python epicevents.py login")
             return False
         return True
@@ -238,7 +238,7 @@ class AuthenticationManager:
                 json.dump(tokens, f, indent=2)
 
         except Exception as e:
-            print(f"⚠️  Warning: Could not save tokens: {e}")
+            print(f"Warning: Could not save tokens: {e}")
 
     def _load_tokens(self) -> Optional[Dict[str, str]]:
         """
@@ -254,7 +254,7 @@ class AuthenticationManager:
             with self.token_file.open('r') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"⚠️  Warning: Could not load tokens: {e}")
+            print(f"Warning: Could not load tokens: {e}")
             return None
 
 

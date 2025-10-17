@@ -99,6 +99,27 @@ ROLE_PERMISSIONS = {
         Permission.DELETE_EVENT,
         Permission.ASSIGN_SUPPORT,
     ],
+    "admin": [
+        # admin has ALL permissions
+        Permission.CREATE_CUSTOMER,
+        Permission.READ_CUSTOMER,
+        Permission.UPDATE_CUSTOMER,
+        Permission.DELETE_CUSTOMER,
+        Permission.CREATE_EMPLOYEE,
+        Permission.READ_EMPLOYEE,
+        Permission.UPDATE_EMPLOYEE,
+        Permission.DELETE_EMPLOYEE,
+        Permission.CREATE_CONTRACT,
+        Permission.READ_CONTRACT,
+        Permission.UPDATE_CONTRACT,
+        Permission.DELETE_CONTRACT,
+        Permission.SIGN_CONTRACT,
+        Permission.CREATE_EVENT,
+        Permission.READ_EVENT,
+        Permission.UPDATE_EVENT,
+        Permission.DELETE_EVENT,
+        Permission.ASSIGN_SUPPORT,
+    ],
 }
 
 

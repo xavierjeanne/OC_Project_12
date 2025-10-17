@@ -56,5 +56,14 @@ class ContractService:
         require_permission(current_user, Permission.DELETE_CONTRACT)
         return self.repository.delete(contract_id)
 
-    def list_contracts(self):
-        return self.repository.list_all()
+    def list_contracts(self, current_user):
+        """ list of all contracts by permission and role"""
+        require_permission(current_user, Permission.READ_CONTRACT)
+        if current_user['role'] in ["management", "admin", "support"]:
+            # management/admin/support see all contracts
+            return self.repository.get_all()
+        elif current_user['role'] == "sales":
+            # sales see assigned contracts
+            return self.repository.find_by_sales_contact(current_user['id'])
+        else:
+            return []

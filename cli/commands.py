@@ -6,15 +6,18 @@ Authentication and main application commands
 import sys
 import getpass
 
+from models import Session
+from repositories.customer import CustomerRepository
+from repositories.contract import ContractRepository
+from repositories.event import EventRepository
+from repositories.employee import EmployeeRepository
+from services.customer import CustomerService
+from services.contract import ContractService
+from services.event import EventService
+from services.employee import EmployeeService
 from services.auth_manager import auth_manager
-from utils.permissions import Permission
 from utils.auth_decorators import (
     cli_auth_required,
-    cli_permission_required,
-    auto_refresh_token,
-    cli_role_required,
-    cli_admin_required,
-    cli_management_or_admin_required,
     with_user_context
 )
 
@@ -120,45 +123,173 @@ def status_command() -> None:
         print(" Token expired (will auto-refresh on next action)")
 
 
-# Example protected commands using new decorators
+# Business Logic Commands with Real Implementation
 @cli_auth_required
 def list_customers_command() -> None:
-    """List customers (requires authentication)"""
+    """List customers based on user role and permissions"""
     print("Customers List")
     print("=" * 20)
-    current_user = auth_manager.get_current_user()
-    print(f"Logged in as: {current_user['name']} ({current_user['role']})")
-    print("Implementation here...")
+
+    try:
+        current_user = auth_manager.get_current_user()
+        session = Session()
+
+        # Initialize service
+        customer_repo = CustomerRepository(session)
+        customer_service = CustomerService(customer_repo)
+
+        # Get customers based on role
+        customers = customer_service.list_customers(current_user)
+
+        if not customers:
+            print("No customers found or no access to customers.")
+            return
+
+        print(f"Found {len(customers)} customer(s) for {current_user['role']} role:")
+        print("-" * 60)
+
+        for customer in customers:
+            customer_line = (f"ID: {customer.id:3d} | {customer.full_name:<25} "
+                             f"| {customer.email:<30}")
+            print(customer_line)
+            if customer.company_name:
+                print(f"      Company: {customer.company_name}")
+            if customer.sales_contact:
+                print(f"      Sales Contact: {customer.sales_contact.name}")
+            print("-" * 60)
+
+    except Exception as e:
+        print(f"Error listing customers: {e}")
+    finally:
+        if 'session' in locals():
+            session.close()
 
 
-@cli_permission_required(Permission.CREATE_CUSTOMER)
-def create_customer_command() -> None:
-    """Create new customer (requires CREATE_CUSTOMER permission)"""
-    print("Create New Customer")
-    print("=" * 25)
-    print("Implementation here...")
-
-
-@cli_permission_required(Permission.DELETE_CUSTOMER)
-def delete_customer_command() -> None:
-    """Delete customer (requires DELETE_CUSTOMER permission)"""
-    print(" Delete Customer")
-    print("=" * 20)
-    print("Implementation here...")
-
-
-@auto_refresh_token
 @cli_auth_required
-def long_operation_command() -> None:
-    """Example of long operation with auto token refresh"""
-    print("Long Operation (with auto token refresh)")
-    print("=" * 45)
-    import time
-    for i in range(5):
-        print(f"Step {i+1}/5...")
-        time.sleep(1)
-        # Token is automatically refreshed if needed
-    print("Operation completed!")
+def list_contracts_command() -> None:
+    """List contracts based on user role and permissions"""
+    print("Contracts List")
+    print("=" * 20)
+
+    try:
+        current_user = auth_manager.get_current_user()
+        session = Session()
+
+        # Initialize service
+        contract_repo = ContractRepository(session)
+        contract_service = ContractService(contract_repo)
+
+        # Get contracts based on role
+        contracts = contract_service.list_contracts(current_user)
+
+        if not contracts:
+            print("No contracts found or no access to contracts.")
+            return
+
+        role = current_user['role']
+        print(f"Found {len(contracts)} contract(s) for {role} role:")
+        print("-" * 80)
+
+        for contract in contracts:
+            status = "Signed" if contract.signed else "Unsigned"
+            customer_name = contract.customer.full_name
+            print(f"ID: {contract.id:3d} | Customer: {customer_name:<25} | {status}")
+            amount_line = (f"      Amount: €{contract.total_amount:,.2f} | "
+                           f"Remaining: €{contract.remaining_amount:,.2f}")
+            print(amount_line)
+            if contract.sales_contact:
+                print(f"      Sales Contact: {contract.sales_contact.name}")
+            print("-" * 80)
+
+    except Exception as e:
+        print(f"Error listing contracts: {e}")
+    finally:
+        if 'session' in locals():
+            session.close()
+
+
+@cli_auth_required
+def list_events_command() -> None:
+    """List events based on user role and permissions"""
+    print("🎪 Events List")
+    print("=" * 20)
+
+    try:
+        current_user = auth_manager.get_current_user()
+        session = Session()
+
+        # Initialize service
+        event_repo = EventRepository(session)
+        event_service = EventService(event_repo)
+
+        # Get events based on role
+        events = event_service.list_events(current_user)
+
+        if not events:
+            print("No events found or no access to events.")
+            return
+
+        print(f"Found {len(events)} event(s) for {current_user['role']} role:")
+        print("-" * 80)
+
+        for event in events:
+            print(f"ID: {event.id:3d} | {event.name:<30}")
+            print(f"      Customer: {event.customer.full_name}")
+            if event.location:
+                print(f"      Location: {event.location}")
+            if event.attendees:
+                print(f"      Attendees: {event.attendees}")
+            if event.support_contact:
+                print(f"      Support Contact: {event.support_contact.name}")
+            print("-" * 80)
+
+    except Exception as e:
+        print(f"Error listing events: {e}")
+    finally:
+        if 'session' in locals():
+            session.close()
+
+
+@cli_auth_required
+def list_employees_command() -> None:
+    """List employees based on user role and permissions"""
+    print("Employees List")
+    print("=" * 20)
+
+    try:
+        current_user = auth_manager.get_current_user()
+        session = Session()
+
+        # Initialize service
+        employee_repo = EmployeeRepository(session)
+        employee_service = EmployeeService(employee_repo)
+
+        # Get employees based on role
+        employees = employee_service.list_employees(current_user)
+
+        if not employees:
+            print("No employees found or no access to employees.")
+            return
+
+        role = current_user['role']
+        print(f"Found {len(employees)} employee(s) for {role} role:")
+        print("-" * 70)
+
+        for employee in employees:
+            role_name = (employee.employee_role.name
+                         if employee.employee_role else "Unknown")
+            employee_line = (f"ID: {employee.id:3d} | {employee.name:<25} "
+                             f"| Role: {role_name:<12}")
+            print(employee_line)
+            print(f"      Email: {employee.email}")
+            print(f"      Employee #: {employee.employee_number}")
+            print("-" * 70)
+
+    except Exception as e:
+        print(f"Error listing employees: {e}")
+    finally:
+        if 'session' in locals():
+            session.close()
 
 
 @with_user_context
@@ -179,35 +310,6 @@ def profile_command(user=None) -> None:
             print(f"Token expires in: {expiry_minutes:.0f} minutes")
 
 
-@cli_admin_required
-def admin_users_command() -> None:
-    """Admin-only command to manage users"""
-    print("Admin Users Management")
-    print("=" * 25)
-    print("This is an admin-only function.")
-    print("Only users with 'admin' role can access this.")
-
-
-@cli_management_or_admin_required
-def reports_command() -> None:
-    """Management or admin command for reports"""
-    print("Management Reports")
-    print("=" * 20)
-    user = auth_manager.get_current_user()
-    print(f"Accessing reports as: {user['role']}")
-    print("This command requires management or admin role.")
-
-
-@cli_role_required('sales', 'management', 'admin')
-def sales_dashboard_command() -> None:
-    """Sales dashboard - requires sales, management or admin role"""
-    print("Sales Dashboard")
-    print("=" * 18)
-    user = auth_manager.get_current_user()
-    print(f"Welcome to sales dashboard, {user['name']} ({user['role']})")
-    print("Sales metrics and customer data here...")
-
-
 def show_help() -> None:
     """Show available commands"""
     print("Epic Events CRM - Available Commands")
@@ -220,7 +322,10 @@ def show_help() -> None:
     print("  profile           - Show user profile")
     print()
     print("Customer Management:")
-    print("  list-customers    - List all customers")
+    print("  list-customers    - List all customers (role-based access)")
+    print("  list-contracts    - List all contracts (role-based access)")
+    print("  list-events       - List all events (role-based access)")
+    print("  list-employees    - List all employees (role-based access)")
     print("  create-customer   - Create a new customer")
     print("  delete-customer   - Delete a customer")
     print()
@@ -252,12 +357,9 @@ def main() -> None:
         'status': status_command,
         'profile': profile_command,
         'list-customers': list_customers_command,
-        'create-customer': create_customer_command,
-        'delete-customer': delete_customer_command,
-        'admin-users': admin_users_command,
-        'reports': reports_command,
-        'sales-dashboard': sales_dashboard_command,
-        'long-operation': long_operation_command,
+        'list-contracts': list_contracts_command,
+        'list-events': list_events_command,
+        'list-employees': list_employees_command,
         'help': show_help,
     }
 

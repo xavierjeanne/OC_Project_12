@@ -50,5 +50,22 @@ class EmployeeService:
         require_permission(current_user, Permission.DELETE_EMPLOYEE)
         return self.repository.delete(employee_id)
 
-    def list_employees(self):
-        return self.repository.list_all()
+    def list_employees(self, current_user):
+        """ list of all employees by role and permission"""
+        require_permission(current_user, Permission.READ_EMPLOYEE)
+
+        if current_user['role'] in ['management', 'admin']:
+            # Management et Admin see all employes
+            return self.repository.get_all()
+        elif current_user['role'] == 'sales':
+            # Sales see only sales + management
+            sales_team = self.repository.find_by_role('sales')
+            management_team = self.repository.find_by_role('management')
+            return sales_team + management_team
+        elif current_user['role'] == 'support':
+            # Support see only support + management
+            support_team = self.repository.find_by_role('support')
+            management_team = self.repository.find_by_role('management')
+            return support_team + management_team
+        else:
+            return []

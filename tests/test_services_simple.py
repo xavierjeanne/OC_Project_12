@@ -2,7 +2,7 @@
 Simple service tests focusing on basic functionality
 """
 
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -78,16 +78,20 @@ class TestEmployeeService:
         with pytest.raises(PermError):
             service.create_employee(employee_data, mock_sales_user)
 
-    def test_list_employees(self):
-        """Test listing all employees"""
+    @patch('services.employee.require_permission')
+    def test_list_employees(self, mock_require_permission):
+        """Test listing all employees as management user"""
         mock_repo = MagicMock()
-        mock_repo.list_all.return_value = [Mock(spec=Employee), Mock(spec=Employee)]
+        mock_repo.get_all.return_value = [Mock(spec=Employee), Mock(spec=Employee)]
         service = EmployeeService(mock_repo)
 
-        result = service.list_employees()
+        # Management user should see all employees
+        management_user = {'id': 1, 'role': 'management', 'name': 'Manager'}
+        result = service.list_employees(management_user)
 
         assert len(result) == 2
-        mock_repo.list_all.assert_called_once()
+        mock_repo.get_all.assert_called_once()
+        mock_require_permission.assert_called_once()
 
 
 # === CONTRACT SERVICE TESTS ===

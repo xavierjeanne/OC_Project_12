@@ -56,5 +56,15 @@ class CustomerService:
         require_permission(current_user, Permission.DELETE_CUSTOMER)
         return self.repository.delete(customer_id)
 
-    def list_customers(self):
-        return self.repository.list_all()
+    def list_customers(self, current_user):
+        """List customers based on user role and permissions"""
+        require_permission(current_user, Permission.READ_CUSTOMER)
+        if current_user['role'] in ['management', 'admin', 'support']:
+            # Management/Admin/Support see all customers
+            return self.repository.get_all()
+        elif current_user['role'] == 'sales':
+            # Sales only see assigned customers
+            return self.repository.find_by_sales_contact(current_user['id'])
+        else:
+            # Other roles have no access
+            return []
