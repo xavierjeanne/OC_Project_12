@@ -53,15 +53,24 @@ class TestEmployeeService:
         employee_data = {
             "name": "John Doe",
             "email": "john@test.com",
+            "employee_number": "EMP001",
             "role_id": 1
         }
 
-        service.create_employee(employee_data, mock_management_user)
+        # Convert mock_management_user to dict format
+        management_user_dict = {
+            'id': mock_management_user.id,
+            'role': mock_management_user.role,
+            'name': getattr(mock_management_user, 'name', 'Manager')
+        }
+
+        service.create_employee(employee_data, management_user_dict)
 
         assert mock_repo.create.called
         created_employee = mock_repo.create.call_args[0][0]
         assert created_employee.name == "John Doe"
         assert created_employee.email == "john@test.com"
+        assert created_employee.employee_number == "EMP001"
         assert created_employee.role_id == 1
 
     def test_create_employee_as_sales_denied(self, mock_sales_user):
@@ -72,11 +81,19 @@ class TestEmployeeService:
         employee_data = {
             "name": "John Doe",
             "email": "john@test.com",
+            "employee_number": "EMP001",
             "role_id": 1
         }
 
+        # Convert mock_sales_user to dict format
+        sales_user_dict = {
+            'id': mock_sales_user.id,
+            'role': mock_sales_user.role,
+            'name': getattr(mock_sales_user, 'name', 'Sales')
+        }
+
         with pytest.raises(PermError):
-            service.create_employee(employee_data, mock_sales_user)
+            service.create_employee(employee_data, sales_user_dict)
 
     @patch('services.employee.require_permission')
     def test_list_employees(self, mock_require_permission):
@@ -111,13 +128,15 @@ class TestContractService:
             "remaining_amount": "5000.0"
         }
 
-        service.create_contract(contract_data, mock_sales_user)
+        # Convert Mock to dictionary
+        sales_user = {'id': 2, 'role': 'sales', 'name': 'Sales Rep'}
+        service.create_contract(contract_data, sales_user)
 
         assert mock_repo.create.called
         created_contract = mock_repo.create.call_args[0][0]
         assert created_contract.customer_id == 100
         assert created_contract.total_amount == 5000.0
-        assert created_contract.sales_contact_id == mock_sales_user.id
+        assert created_contract.sales_contact_id == sales_user['id']
 
     def test_create_contract_as_support_denied(self, mock_support_user):
         """Support cannot create contracts"""
@@ -168,7 +187,10 @@ class TestEventService:
             "location": "Paris",
             "attendees": "100"
         }
-        service.create_event(event_data, mock_sales_user)
+
+        # Convert Mock to dictionary
+        sales_user = {'id': 2, 'role': 'sales', 'name': 'Sales Rep'}
+        service.create_event(event_data, sales_user)
         assert mock_repo.create.called
         created_event = mock_repo.create.call_args[0][0]
         assert created_event.name == "Conference 2025"
@@ -195,7 +217,10 @@ class TestEventService:
             "name": "Conference 2025 Updated",
             "customer_id": "200"
         }
-        service.update_event(1, event_data, mock_support_user)
+
+        # Convert Mock to dictionary
+        support_user = {'id': 3, 'role': 'support', 'name': 'Support Rep'}
+        service.update_event(1, event_data, support_user)
         assert mock_repo.update.called
         updated_event = mock_repo.update.call_args[0][0]
         assert updated_event.id == 1

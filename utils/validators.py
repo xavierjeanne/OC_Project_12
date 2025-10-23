@@ -32,8 +32,9 @@ def validate_email(email: str) -> str:
 
     email = email.strip().lower()
 
-    # Basic but robust regex for email
-    email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    email_pattern = (
+        r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]+(?:\.[a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$"
+        )
 
     if not re.match(email_pattern, email):
         raise ValidationError(f"Email '{email}' is not valid")
@@ -59,7 +60,6 @@ def validate_phone(phone: Optional[str]) -> Optional[str]:
 
     phone = phone.strip()
 
-    # Accepts different formats: 0123456789, 01 23 45 67 89, +33123456789, etc.
     phone_clean = re.sub(r"[\s\-\.\(\)]", "", phone)
 
     if not re.match(r"^\+?[0-9]{10,15}$", phone_clean):
@@ -272,3 +272,75 @@ def validate_password(password: str) -> Tuple[bool, str]:
         return False, "Password must contain at least one special character"
 
     return True, "Password is valid"
+
+
+def validate_non_negative_integer(value: int, field_name: str = "value") -> int:
+    """
+    Validates that a value is a non-negative integer
+
+    Args:
+        value: Value to validate
+        field_name: Field name for error messages
+
+    Returns:
+        Validated integer value
+
+    Raises:
+        ValidationError: If value is invalid
+    """
+    if value is None:
+        value = 0
+
+    try:
+        value = int(value)
+    except (ValueError, TypeError):
+        raise ValidationError(f"The {field_name} must be an integer")
+
+    if value < 0:
+        raise ValidationError(f"The {field_name} cannot be negative")
+
+    return value
+
+
+def validate_date(date_value, field_name: str = "date"):
+    """
+    Validates a date value and converts it to datetime if needed
+
+    Args:
+        date_value: The date to validate (string, date, or datetime)
+        field_name: Field name for error message
+
+    Returns:
+        The validated datetime object
+
+    Raises:
+        ValidationError: If the date is invalid
+    """
+    if not date_value:
+        return None
+
+    if isinstance(date_value, datetime):
+        return date_value
+
+    if isinstance(date_value, str):
+        try:
+            # Try different date formats
+            formats = [
+                "%Y-%m-%d",
+                "%Y-%m-%d %H:%M:%S",
+                "%d/%m/%Y",
+                "%d-%m-%Y"
+            ]
+            for fmt in formats:
+                try:
+                    return datetime.strptime(date_value, fmt)
+                except ValueError:
+                    continue
+            raise ValueError("No valid format found")
+        except ValueError:
+            raise ValidationError(
+                f"The {field_name} field must be a valid date "
+                f"(YYYY-MM-DD or DD/MM/YYYY format)"
+            )
+
+    raise ValidationError(f"The {field_name} field must be a valid date")
