@@ -54,7 +54,8 @@ class TestEmployeeService:
             "name": "John Doe",
             "email": "john@test.com",
             "employee_number": "EMP001",
-            "role_id": 1
+            "role_id": 1,
+            "password": "SecurePass123!"
         }
 
         # Convert mock_management_user to dict format
@@ -67,11 +68,11 @@ class TestEmployeeService:
         service.create_employee(employee_data, management_user_dict)
 
         assert mock_repo.create.called
-        created_employee = mock_repo.create.call_args[0][0]
-        assert created_employee.name == "John Doe"
-        assert created_employee.email == "john@test.com"
-        assert created_employee.employee_number == "EMP001"
-        assert created_employee.role_id == 1
+        created_employee_data = mock_repo.create.call_args[0][0]
+        assert created_employee_data['name'] == "John Doe"
+        assert created_employee_data['email'] == "john@test.com"
+        assert created_employee_data['employee_number'] == "EMP001"
+        assert created_employee_data['role_id'] == 1
 
     def test_create_employee_as_sales_denied(self, mock_sales_user):
         """Sales cannot create employees"""
@@ -133,10 +134,10 @@ class TestContractService:
         service.create_contract(contract_data, sales_user)
 
         assert mock_repo.create.called
-        created_contract = mock_repo.create.call_args[0][0]
-        assert created_contract.customer_id == 100
-        assert created_contract.total_amount == 5000.0
-        assert created_contract.sales_contact_id == sales_user['id']
+        created_contract_data = mock_repo.create.call_args[0][0]
+        assert created_contract_data['customer_id'] == 100
+        assert created_contract_data['total_amount'] == 5000.0
+        assert created_contract_data['sales_contact_id'] == sales_user['id']
 
     def test_create_contract_as_support_denied(self, mock_support_user):
         """Support cannot create contracts"""
@@ -192,11 +193,11 @@ class TestEventService:
         sales_user = {'id': 2, 'role': 'sales', 'name': 'Sales Rep'}
         service.create_event(event_data, sales_user)
         assert mock_repo.create.called
-        created_event = mock_repo.create.call_args[0][0]
-        assert created_event.name == "Conference 2025"
-        assert created_event.customer_id == 200
-        assert created_event.location == "Paris"
-        assert created_event.attendees == 100
+        created_event_data = mock_repo.create.call_args[0][0]
+        assert created_event_data['name'] == "Conference 2025"
+        assert created_event_data['customer_id'] == 200
+        assert created_event_data['location'] == "Paris"
+        assert created_event_data['attendees'] == 100
 
     def test_create_event_as_support_denied(self, mock_support_user):
         """Support cannot create events"""
@@ -222,9 +223,11 @@ class TestEventService:
         support_user = {'id': 3, 'role': 'support', 'name': 'Support Rep'}
         service.update_event(1, event_data, support_user)
         assert mock_repo.update.called
-        updated_event = mock_repo.update.call_args[0][0]
-        assert updated_event.id == 1
-        assert updated_event.name == "Conference 2025 Updated"
+        # Premier argument est l'event_id, second argument est les données
+        event_id = mock_repo.update.call_args[0][0]
+        updated_event_data = mock_repo.update.call_args[0][1]
+        assert event_id == 1
+        assert updated_event_data['name'] == "Conference 2025 Updated"
 
     def test_update_event_as_sales_denied(self, mock_sales_user):
         """Sales cannot update events"""

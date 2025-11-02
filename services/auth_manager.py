@@ -4,7 +4,7 @@ Handles persistent authentication, token storage, and session management
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Optional, Dict, Any
 
@@ -55,7 +55,7 @@ class AuthenticationManager:
         tokens = {
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(UTC).isoformat()
         }
 
         self._save_tokens(tokens)
@@ -126,7 +126,7 @@ class AuthenticationManager:
         if new_access_token:
             # Update stored tokens
             tokens["access_token"] = new_access_token
-            tokens["created_at"] = datetime.utcnow().isoformat()
+            tokens["created_at"] = datetime.now(UTC).isoformat()
             self._save_tokens(tokens)
 
             # Verify new token and restore session
@@ -157,7 +157,7 @@ class AuthenticationManager:
         user = self.get_current_user()
         if not user:
             print("You must be logged in to perform this action.")
-            print("   Use: python epicevents.py login")
+            print("   Use: python -m cli.main login")
             return False
         return True
 
@@ -177,7 +177,8 @@ class AuthenticationManager:
         # Get full employee object for permission check
         session = Session()
         try:
-            employee = session.query(Employee).get(self.current_user["id"])
+            from sqlalchemy.orm import joinedload
+            employee = session.query(Employee).options(joinedload(Employee.employee_role)).get(self.current_user["id"])
             if not employee:
                 print("User session invalid")
                 self.logout()
@@ -185,7 +186,7 @@ class AuthenticationManager:
 
             if not has_permission(employee, permission):
                 print(f"Access denied. You don't have permission: {permission.value}")
-                print(f"Your role '{employee['role']}' cannot perform this action.")
+                print(f"Your role '{employee.role}' cannot perform this action.")
                 return False
 
             return True
@@ -213,8 +214,8 @@ class AuthenticationManager:
         if not payload:
             return None
 
-        expires_at = datetime.fromtimestamp(payload["exp"])
-        time_until_expiry = expires_at - datetime.utcnow()
+        expires_at = datetime.fromtimestamp(payload["exp"], UTC)
+        time_until_expiry = expires_at - datetime.now(UTC)
 
         return {
             "user": user,

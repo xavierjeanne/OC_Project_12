@@ -10,7 +10,7 @@ class EventService:
         self.repository = event_repository
 
     def get_event(self, event_id):
-        return self.repository.find_by_id(event_id)
+        return self.repository.get_by_id(event_id)
 
     def create_event(self, event_data, current_user):
         require_permission(current_user, Permission.CREATE_EVENT)
@@ -58,19 +58,19 @@ class EventService:
         except (ValueError, TypeError):
             raise ValidationError("All ID fields must be valid integers")
 
-        event = Event(
-            name=name,
-            customer_id=customer_id,
-            contract_id=contract_id,
-            support_contact_id=support_contact_id,
-            location=location,
-            attendees=attendees,
-            date_start=date_start,
-            date_end=date_end,
-            notes=notes
-        )
+        event_data_dict = {
+            'name': name,
+            'customer_id': customer_id,
+            'contract_id': contract_id,
+            'support_contact_id': support_contact_id,
+            'location': location,
+            'attendees': attendees,
+            'date_start': date_start,
+            'date_end': date_end,
+            'notes': notes
+        }
 
-        return self.repository.create(event)
+        return self.repository.create(event_data_dict)
 
     def update_event(self, event_id, event_data, current_user):
         require_permission(current_user, Permission.UPDATE_EVENT)
@@ -118,33 +118,26 @@ class EventService:
         except (ValueError, TypeError):
             raise ValidationError("All ID fields must be valid integers")
 
-        event = Event(
-            id=event_id,
-            name=name,
-            customer_id=customer_id,
-            contract_id=contract_id,
-            support_contact_id=support_contact_id,
-            location=location,
-            attendees=attendees,
-            date_start=date_start,
-            date_end=date_end,
-            notes=notes
-        )
+        event_data_dict = {
+            'name': name,
+            'customer_id': customer_id,
+            'contract_id': contract_id,
+            'support_contact_id': support_contact_id,
+            'location': location,
+            'attendees': attendees,
+            'date_start': date_start,
+            'date_end': date_end,
+            'notes': notes
+        }
 
-        return self.repository.update(event)
+        return self.repository.update(event_id, event_data_dict)
 
     def delete_event(self, event_id, current_user):
         require_permission(current_user, Permission.DELETE_EVENT)
         return self.repository.delete(event_id)
 
     def list_events(self, current_user):
-        """ list of all events by role and permissions"""
+        """List events - all users can see all events (read-only access)"""
         require_permission(current_user, Permission.READ_EVENT)
-        if current_user['role'] in ['management', 'sales', 'admin']:
-            # managment see all events
-            return self.repository.get_all()
-        elif current_user['role'] == 'support':
-            # support see only assignated event
-            return self.repository.find_by_support_contact(current_user['id'])
-        else:
-            return []
+        # CONFORMITÉ: Tous les collaborateurs doivent pouvoir accéder à tous les événements en lecture seule
+        return self.repository.get_all()

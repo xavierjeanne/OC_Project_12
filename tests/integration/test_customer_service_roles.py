@@ -121,15 +121,15 @@ class TestCustomerServiceRoleBasedAccess:
         assert result == mock_customers
 
     @patch('services.customer.require_permission')
-    def test_list_customers_sales_sees_only_assigned(self,
+    def test_list_customers_sales_sees_all_customers(self,
                                                      mock_require_permission,
                                                      customer_service,
                                                      mock_repository,
                                                      sales_user):
-        """Test that sales users see only their assigned customers"""
+        """Test that sales users now see ALL customers (conformité)"""
         # Setup
-        mock_customers = [MagicMock(), MagicMock()]
-        mock_repository.find_by_sales_contact.return_value = mock_customers
+        mock_customers = [MagicMock(), MagicMock(), MagicMock()]
+        mock_repository.get_all.return_value = mock_customers
 
         # Execute
         result = customer_service.list_customers(sales_user)
@@ -137,19 +137,20 @@ class TestCustomerServiceRoleBasedAccess:
         # Verify
         mock_require_permission.assert_called_once_with(
             sales_user, Permission.READ_CUSTOMER)
-        mock_repository.find_by_sales_contact.assert_called_once_with(
-            sales_user['id'])
-        mock_repository.get_all.assert_not_called()
+        mock_repository.get_all.assert_called_once()
+        mock_repository.find_by_sales_contact.assert_not_called()
         assert result == mock_customers
 
     @patch('services.customer.require_permission')
-    def test_list_customers_unknown_role_returns_empty(self,
+    def test_list_customers_unknown_role_sees_all_customers(self,
                                                        mock_require_permission,
                                                        customer_service,
                                                        mock_repository):
-        """Test that unknown roles get empty list"""
+        """Test that even unknown roles now see ALL customers (conformité)"""
         # Setup
         unknown_user = {'id': 5, 'name': 'Unknown', 'role': 'unknown'}
+        mock_customers = [MagicMock(), MagicMock()]
+        mock_repository.get_all.return_value = mock_customers
 
         # Execute
         result = customer_service.list_customers(unknown_user)
@@ -157,9 +158,9 @@ class TestCustomerServiceRoleBasedAccess:
         # Verify
         mock_require_permission.assert_called_once_with(
             unknown_user, Permission.READ_CUSTOMER)
-        mock_repository.get_all.assert_not_called()
+        mock_repository.get_all.assert_called_once()
         mock_repository.find_by_sales_contact.assert_not_called()
-        assert result == []
+        assert result == mock_customers
 
     @patch('services.customer.require_permission')
     def test_list_customers_permission_denied_raises_error(self,

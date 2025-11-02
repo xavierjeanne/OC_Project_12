@@ -1,91 +1,65 @@
 """
 Tests for CASCADE behaviors in database relationships
 Tests that foreign key constraints work properly with CASCADE DELETE and SET NULL
+Tests avec PostgreSQL pour cohérence production
 """
 
 from datetime import datetime
 
 import pytest
-from sqlalchemy.orm import sessionmaker
 
-from db.config import engine
-from models import Base, Contract, Customer, Employee, Event, Role
+from models import Contract, Customer, Employee, Event, Role
 from repositories import (ContractRepository, CustomerRepository,
                           EmployeeRepository, EventRepository)
 from services.auth import AuthService
 
 
-@pytest.fixture(scope="session", autouse=True)
-def setup_database():
-    """Setup database once per test session"""
-    from db.config import DATABASE_URL
-
-    print("\n=== Test Cascade Setup ===")
-    print(f"Connection URL: {DATABASE_URL}")
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
-    print("✅ Tables created successfully")
-    yield
+@pytest.fixture
+def cascade_session(test_db):
+    """Session pour tests de cascade - utilise les rôles de conftest.py"""
+    yield test_db
 
 
 @pytest.fixture
-def test_session():
-    """Create a fresh database session for each test"""
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    yield session
-    # Cleanup after each test
-    try:
-        session.query(Event).delete()
-        session.query(Contract).delete()
-        session.query(Customer).delete()
-        session.query(Employee).delete()
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        print(f"Error during cleanup: {e}")
-    finally:
-        session.close()
+def roles_setup(cascade_session):
+    """Récupérer les rôles créés dans conftest.py - évite DetachedInstanceError"""
+    roles_data = {}
+    for role_name in ["sales", "support", "management", "admin"]:
+        role = cascade_session.query(Role).filter_by(name=role_name).first()
+        if role:
+            roles_data[role_name] = {
+                'id': role.id,
+                'name': role.name,
+                'description': role.description
+            }
+    
+    # Return a dict-like object that allows accessing both id and full role
+    class RoleHelper:
+        def __init__(self, session, roles_data):
+            self.session = session
+            self.roles_data = roles_data
+            
+        def __getitem__(self, key):
+            if key not in self.roles_data:
+                raise KeyError(f"Role '{key}' not found")
+            
+            # Return fresh role object from current session
+            role_id = self.roles_data[key]['id']
+            return self.session.query(Role).filter(Role.id == role_id).first()
+    
+    return RoleHelper(cascade_session, roles_data)
 
 
 @pytest.fixture
-def roles_setup(test_session):
-    """Create basic roles for tests"""
-    # Create roles if they don't exist
-    sales_role = test_session.query(Role).filter_by(name="sales").first()
-    if not sales_role:
-        sales_role = Role(name="sales", description="Sales team")
-        test_session.add(sales_role)
-
-    management_role = test_session.query(Role).filter_by(name="management").first()
-    if not management_role:
-        management_role = Role(name="management", description="Management team")
-        test_session.add(management_role)
-
-    support_role = test_session.query(Role).filter_by(name="support").first()
-    if not support_role:
-        support_role = Role(name="support", description="Support team")
-        test_session.add(support_role)
-
-    test_session.commit()
-
-    return {
-        "sales": sales_role,
-        "management": management_role,
-        "support": support_role
-    }
-
-
-@pytest.fixture
-def customer_repo(test_session):
+def customer_repo(cascade_session):
     """Customer repository instance"""
-    return CustomerRepository(test_session)
+    return CustomerRepository(cascade_session)
 
 
 @pytest.fixture
-def employee_repo(test_session):
+def employee_repo(cascade_session):
     """Employee repository instance"""
-    return EmployeeRepository(test_session)
+    return EmployeeRepository(cascade_session)
 
 
 @pytest.fixture
@@ -108,19 +82,19 @@ def create_test_employee_with_auth(auth_service,
 
 
 @pytest.fixture
-def contract_repo(test_session):
+def contract_repo(cascade_session):
     """Contract repository instance"""
-    return ContractRepository(test_session)
+    return ContractRepository(cascade_session)
 
 
 @pytest.fixture
-def event_repo(test_session):
+def event_repo(cascade_session):
     """Event repository instance"""
-    return EventRepository(test_session)
+    return EventRepository(cascade_session)
 
 
 def test_cascade_delete_customer_deletes_contracts_and_events(
-    test_session,
+    cascade_session,
     customer_repo,
     employee_repo,
     contract_repo,
@@ -186,7 +160,7 @@ def test_cascade_delete_customer_deletes_contracts_and_events(
 
     # Delete the customer
     customer_repo.delete(customer.id)
-    test_session.commit()
+    cascade_session.commit()
 
     # Check that the customer, contract AND event have been deleted (CASCADE)
     assert customer_repo.count() == 0
@@ -196,7 +170,7 @@ def test_cascade_delete_customer_deletes_contracts_and_events(
 
 
 def test_cascade_delete_contract_deletes_events(
-    test_session,
+    cascade_session,
     customer_repo,
     employee_repo,
     contract_repo,
@@ -259,7 +233,7 @@ def test_cascade_delete_contract_deletes_events(
 
     # Delete the contract
     contract_repo.delete(contract.id)
-    test_session.commit()
+    cascade_session.commit()
 
     # Check that the event has also been deleted (CASCADE)
     assert contract_repo.count() == 0
@@ -268,7 +242,7 @@ def test_cascade_delete_contract_deletes_events(
 
 
 def test_delete_employee_sets_null_on_foreign_keys(
-    test_session,
+    cascade_session,
     customer_repo,
     employee_repo,
     contract_repo,
@@ -332,8 +306,8 @@ def test_delete_employee_sets_null_on_foreign_keys(
     )
 
     # Check foreign keys before deletion
-    test_session.refresh(customer)
-    test_session.refresh(event)
+    cascade_session.refresh(customer)
+    cascade_session.refresh(event)
     print(
         f"Before: Customer.sales_contact_id = {customer.sales_contact_id}, "
         f"Event.support_contact_id = {event.support_contact_id}"
@@ -341,7 +315,7 @@ def test_delete_employee_sets_null_on_foreign_keys(
 
     # Delete the sales employee
     employee_repo.delete(sales.id)
-    test_session.commit()
+    cascade_session.commit()
 
     # Check that entities still exist but with FK set to NULL
     assert customer_repo.count() == 1, "Customer should still exist"
@@ -349,8 +323,8 @@ def test_delete_employee_sets_null_on_foreign_keys(
     assert event_repo.count() == 1, "Event should still exist"
 
     # Refresh to get updated values
-    test_session.refresh(customer)
-    test_session.refresh(contract)
+    cascade_session.refresh(customer)
+    cascade_session.refresh(contract)
 
     assert customer.sales_contact_id is None, "Customer.sales_contact_id should be NULL"
     assert contract.sales_contact_id is None, "Contract.sales_contact_id should be NULL"
@@ -361,17 +335,17 @@ def test_delete_employee_sets_null_on_foreign_keys(
 
     # Delete the support employee
     employee_repo.delete(support.id)
-    test_session.commit()
+    cascade_session.commit()
 
     # Check event still exists with NULL FK
     assert event_repo.count() == 1, "Event should still exist"
-    test_session.refresh(event)
+    cascade_session.refresh(event)
     assert event.support_contact_id is None, "Event.support_contact_id should be NULL"
     print("✅ After deletion Support: Event exists with FK = NULL (SET NULL OK)")
 
 
 def test_employee_deletion_preserves_related_entities(
-    test_session, customer_repo, employee_repo, roles_setup, auth_service
+    cascade_session, customer_repo, employee_repo, roles_setup, auth_service
 ):
     """
     Test that deleting an Employee does not delete related Customers,
@@ -399,13 +373,13 @@ def test_employee_deletion_preserves_related_entities(
 
     # Delete the employee
     employee_repo.delete(employee.id)
-    test_session.commit()
+    cascade_session.commit()
 
     # Check that the Customer still exists
     assert employee_repo.count() == 0, "Employee should be deleted"
     assert customer_repo.count() == 1, "Customer should still exist"
 
-    test_session.refresh(customer)
+    cascade_session.refresh(customer)
     assert customer.sales_contact_id is None, "Foreign key should be NULL"
     print(
         "✅ After deletion Employee: Customer"

@@ -3,6 +3,7 @@ from repositories.employee import EmployeeRepository
 from utils.permissions import Permission, require_permission
 from utils.validators import (validate_string_not_empty, validate_email,
                               ValidationError)
+from services.auth import AuthService
 
 
 class EmployeeService:
@@ -10,7 +11,7 @@ class EmployeeService:
         self.repository = employee_repository
 
     def get_employee(self, employee_id):
-        return self.repository.find_by_id(employee_id)
+        return self.repository.get_by_id(employee_id)
 
     def create_employee(self, employee_data, current_user):
         require_permission(current_user, Permission.CREATE_EMPLOYEE)
@@ -31,14 +32,26 @@ class EmployeeService:
         except (ValueError, TypeError):
             raise ValidationError("role_id must be a valid integer")
 
-        employee = Employee(
-            name=name,
-            email=email,
-            employee_number=employee_number,
-            role_id=role_id
-        )
+        # Validate and hash password
+        password = employee_data.get("password")
+        if not password:
+            raise ValidationError("password is required")
+        
+        password = validate_string_not_empty(password, "password")
+        
+        # Hash the password
+        auth_service = AuthService()
+        password_hash = auth_service.hash_password(password)
 
-        return self.repository.create(employee)
+        employee_data_dict = {
+            'name': name,
+            'email': email,
+            'employee_number': employee_number,
+            'role_id': role_id,
+            'password_hash': password_hash
+        }
+
+        return self.repository.create(employee_data_dict)
 
     def update_employee(self, employee_id, employee_data, current_user):
         require_permission(current_user, Permission.UPDATE_EMPLOYEE)
@@ -58,15 +71,14 @@ class EmployeeService:
         except (ValueError, TypeError):
             raise ValidationError("role_id must be a valid integer")
 
-        employee = Employee(
-            id=employee_id,
-            name=name,
-            email=email,
-            employee_number=employee_number,
-            role_id=role_id
-        )
+        employee_data_dict = {
+            'name': name,
+            'email': email,
+            'employee_number': employee_number,
+            'role_id': role_id
+        }
 
-        return self.repository.update(employee)
+        return self.repository.update(employee_id, employee_data_dict)
 
     def delete_employee(self, employee_id, current_user):
         require_permission(current_user, Permission.DELETE_EMPLOYEE)

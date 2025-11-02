@@ -1,15 +1,11 @@
 # Chargement des variables d'environnement et configuration SQLAlchemy pour PostgreSQL
 import os
-# Charger le bon fichier d'environnement selon le contexte
-import sys
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 
-if "pytest" in sys.modules:
-    load_dotenv(".env.test")
-else:
-    load_dotenv()
+# Charger les variables d'environnement de production
+load_dotenv()
 
 
 DB_USER = os.getenv("DB_USER")

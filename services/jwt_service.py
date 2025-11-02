@@ -5,7 +5,7 @@ Handles JWT token creation, validation, and management
 
 import jwt
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Optional, Dict, Any
 from pathlib import Path
 
@@ -70,7 +70,7 @@ class JWTService:
         Returns:
             JWT access token string
         """
-        expire = datetime.utcnow() + timedelta(minutes=self.access_token_expire_minutes)
+        expire = datetime.now(UTC) + timedelta(minutes=self.access_token_expire_minutes)
 
         payload = {
             "sub": str(employee_data["id"]),  # Subject (user ID)
@@ -80,7 +80,7 @@ class JWTService:
             "role": employee_data["role"],
             "role_id": employee_data["role_id"],
             "exp": expire,
-            "iat": datetime.utcnow(),  # Issued at
+            "iat": datetime.now(UTC),  # Issued at
             "type": "access"
         }
 
@@ -97,13 +97,13 @@ class JWTService:
         Returns:
             JWT refresh token string
         """
-        expire = datetime.utcnow() + timedelta(days=self.refresh_token_expire_days)
+        expire = datetime.now(UTC) + timedelta(days=self.refresh_token_expire_days)
 
         payload = {
             "sub": str(employee_data["id"]),
             "employee_number": employee_data["employee_number"],
             "exp": expire,
-            "iat": datetime.utcnow(),
+            "iat": datetime.now(UTC),
             "type": "refresh"
         }
 

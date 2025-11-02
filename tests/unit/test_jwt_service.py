@@ -6,7 +6,7 @@ Tests the JWT token creation, validation, and management functionality
 import pytest
 import jwt
 import os
-from datetime import datetime
+from datetime import datetime, UTC
 from unittest.mock import patch, MagicMock
 from services.jwt_service import JWTService
 
@@ -214,9 +214,9 @@ class TestJWTService:
         refresh_payload = jwt.decode(refresh_token, secret,
                                      algorithms=[jwt_service.algorithm])
 
-        access_exp = datetime.fromtimestamp(access_payload["exp"])
-        refresh_exp = datetime.fromtimestamp(refresh_payload["exp"])
-        now = datetime.utcnow()
+        access_exp = datetime.fromtimestamp(access_payload["exp"], UTC)
+        refresh_exp = datetime.fromtimestamp(refresh_payload["exp"], UTC)
+        now = datetime.now(UTC)
 
         # Access token should expire in reasonable time (allow more flexibility)
         access_delta = access_exp - now

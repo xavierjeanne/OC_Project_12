@@ -1,14 +1,13 @@
 """
 Tests additionnels pour améliorer la couverture des repositories
 Focus sur les méthodes spécialisées non testées
+Tests avec PostgreSQL pour cohérence production
 """
 
 import pytest
 from datetime import datetime, timedelta
-from sqlalchemy.orm import sessionmaker
 
-from db.config import engine
-from models import Base, Customer, Employee, Role, Contract, Event
+from models import Customer, Employee, Role, Contract, Event
 from repositories import (CustomerRepository,
                           EmployeeRepository,
                           ContractRepository,
@@ -16,49 +15,40 @@ from repositories import (CustomerRepository,
 from services.auth import AuthService
 
 
-@pytest.fixture(scope="session", autouse=True)
-def setup_coverage_database():
-    """Setup database pour tests de couverture"""
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
-    yield
-
-
 @pytest.fixture
-def coverage_session():
-    """Session pour tests de couverture"""
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    yield session
-    # Cleanup
-    try:
-        session.query(Event).delete()
-        session.query(Contract).delete()
-        session.query(Customer).delete()
-        session.query(Employee).delete()
-        session.commit()
-    except Exception:
-        session.rollback()
-    finally:
-        session.close()
+def coverage_session(test_db):
+    """Session pour tests de couverture - utilise les rôles de conftest.py"""
+    yield test_db
 
 
 @pytest.fixture
 def coverage_roles(coverage_session):
-    """Créer les rôles pour tests"""
-    # Vérifier si les rôles existent déjà
-    sales_role = coverage_session.query(Role).filter_by(name="sales").first()
-    if not sales_role:
-        sales_role = Role(name="sales", description="Sales team")
-        coverage_session.add(sales_role)
-
-    support_role = coverage_session.query(Role).filter_by(name="support").first()
-    if not support_role:
-        support_role = Role(name="support", description="Support team")
-        coverage_session.add(support_role)
-
-    coverage_session.commit()
-    return {"sales": sales_role, "support": support_role}
+    """Récupérer les rôles créés dans conftest.py - évite DetachedInstanceError"""
+    roles_data = {}  
+    for role_name in ["sales", "support", "management", "admin"]:
+        role = coverage_session.query(Role).filter_by(name=role_name).first()
+        if role:
+            roles_data[role_name] = {
+                'id': role.id,
+                'name': role.name,
+                'description': role.description
+            }
+    
+    # Return a dict-like object that allows accessing both id and full role
+    class RoleHelper:
+        def __init__(self, session, roles_data):
+            self.session = session
+            self.roles_data = roles_data
+            
+        def __getitem__(self, key):
+            if key not in self.roles_data:
+                raise KeyError(f"Role '{key}' not found")
+            
+            # Return fresh role object from current session
+            role_id = self.roles_data[key]['id']
+            return self.session.query(Role).filter(Role.id == role_id).first()
+    
+    return RoleHelper(coverage_session, roles_data)
 
 
 @pytest.fixture

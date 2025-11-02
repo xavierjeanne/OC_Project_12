@@ -12,7 +12,7 @@ class ContractService:
         self.repository = contract_repository
 
     def get_contract(self, contract_id):
-        return self.repository.find_by_id(contract_id)
+        return self.repository.get_by_id(contract_id)
 
     def create_contract(self, contract_data, current_user):
         require_permission(current_user, Permission.CREATE_CONTRACT)
@@ -53,16 +53,16 @@ class ContractService:
                 "Customer ID and Sales Contact ID must be valid integers"
                 )
 
-        contract = Contract(
-            customer_id=customer_id,
-            sales_contact_id=sales_contact_id,
-            total_amount=total_amount,
-            remaining_amount=remaining_amount,
-            date_created=date_created,
-            signed=signed
-        )
+        contract_data_dict = {
+            'customer_id': customer_id,
+            'sales_contact_id': sales_contact_id,
+            'total_amount': total_amount,
+            'remaining_amount': remaining_amount,
+            'date_created': date_created,
+            'signed': signed
+        }
 
-        return self.repository.create(contract)
+        return self.repository.create(contract_data_dict)
 
     def update_contract(self, contract_id, contract_data, current_user):
         require_permission(current_user, Permission.UPDATE_CONTRACT)
@@ -103,30 +103,23 @@ class ContractService:
                 "Customer ID and Sales Contact ID must be valid integers"
                 )
 
-        contract = Contract(
-            id=contract_id,
-            customer_id=customer_id,
-            sales_contact_id=sales_contact_id,
-            total_amount=total_amount,
-            remaining_amount=remaining_amount,
-            date_created=date_created,
-            signed=signed
-        )
+        contract_data_dict = {
+            'customer_id': customer_id,
+            'sales_contact_id': sales_contact_id,
+            'total_amount': total_amount,
+            'remaining_amount': remaining_amount,
+            'date_created': date_created,
+            'signed': signed
+        }
 
-        return self.repository.update(contract)
+        return self.repository.update(contract_id, contract_data_dict)
 
     def delete_contract(self, contract_id, current_user):
         require_permission(current_user, Permission.DELETE_CONTRACT)
         return self.repository.delete(contract_id)
 
     def list_contracts(self, current_user):
-        """ list of all contracts by permission and role"""
+        """List contracts - all users can see all contracts (read-only access)"""
         require_permission(current_user, Permission.READ_CONTRACT)
-        if current_user['role'] in ["management", "admin", "support"]:
-            # management/admin/support see all contracts
-            return self.repository.get_all()
-        elif current_user['role'] == "sales":
-            # sales see assigned contracts
-            return self.repository.find_by_sales_contact(current_user['id'])
-        else:
-            return []
+        # CONFORMITÉ: Tous les collaborateurs doivent pouvoir accéder à tous les contrats en lecture seule
+        return self.repository.get_all()

@@ -1,13 +1,12 @@
 """
 Tests pour améliorer la couverture des permissions de sécurité
+Tests avec PostgreSQL pour cohérence production
 """
 
 import pytest
 from datetime import datetime
-from sqlalchemy.orm import sessionmaker
 
-from db.config import engine
-from models import Base, Customer, Employee, Role, Contract, Event
+from models import Customer, Employee, Role, Contract, Event
 from repositories import (CustomerRepository,
                           EmployeeRepository,
                           ContractRepository,
@@ -21,46 +20,40 @@ from utils.permissions import (
 )
 
 
-@pytest.fixture(scope="session", autouse=True)
-def setup_permissions_database():
-    """Setup database pour tests de permissions"""
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
-    yield
-
-
 @pytest.fixture
-def permissions_session():
-    """Session pour tests de permissions"""
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    yield session
-    # Cleanup
-    try:
-        session.query(Event).delete()
-        session.query(Contract).delete()
-        session.query(Customer).delete()
-        session.query(Employee).delete()
-        session.commit()
-    except Exception:
-        session.rollback()
-    finally:
-        session.close()
+def permissions_session(test_db):
+    """Session pour tests de permissions - utilise les rôles créés dans conftest.py"""
+    yield test_db
 
 
 @pytest.fixture
 def permissions_roles(permissions_session):
-    """Créer les rôles pour tests de permissions"""
-    roles = {}
-    for role_name in ["sales", "support", "management"]:
+    """Récupérer les rôles créés dans conftest.py - évite DetachedInstanceError"""
+    roles_data = {}
+    for role_name in ["sales", "support", "management", "admin"]:
         role = permissions_session.query(Role).filter_by(name=role_name).first()
-        if not role:
-            role = Role(name=role_name, description=f"{role_name.title()} team")
-            permissions_session.add(role)
-        roles[role_name] = role
-
-    permissions_session.commit()
-    return roles
+        if role:
+            roles_data[role_name] = {
+                'id': role.id,
+                'name': role.name,
+                'description': role.description
+            }
+    
+    # Return a dict-like object that allows accessing both id and full role
+    class RoleHelper:
+        def __init__(self, session, roles_data):
+            self.session = session
+            self.roles_data = roles_data
+            
+        def __getitem__(self, key):
+            if key not in self.roles_data:
+                raise KeyError(f"Role '{key}' not found")
+            
+            # Return fresh role object from current session
+            role_id = self.roles_data[key]['id']
+            return self.session.query(Role).filter(Role.id == role_id).first()
+    
+    return RoleHelper(permissions_session, roles_data)
 
 
 @pytest.fixture

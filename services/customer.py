@@ -1,5 +1,6 @@
 
 
+from sqlalchemy.exc import IntegrityError
 from models import Customer
 from repositories.customer import CustomerRepository
 from utils.permissions import Permission, require_permission
@@ -12,7 +13,7 @@ class CustomerService:
         self.repository = customer_repository
 
     def get_customer(self, customer_id):
-        return self.repository.find_by_id(customer_id)
+        return self.repository.get_by_id(customer_id)
 
     def create_customer(self, customer_data, current_user):
         require_permission(current_user, Permission.CREATE_CUSTOMER)
@@ -38,15 +39,22 @@ class CustomerService:
         except (ValueError, TypeError):
             raise ValidationError("Sales Contact ID must be a valid integer")
 
-        customer = Customer(
-            full_name=full_name,
-            email=email,
-            phone=phone,
-            company_name=company_name,
-            sales_contact_id=sales_contact_id
-        )
+        customer_data_dict = {
+            'full_name': full_name,
+            'email': email,
+            'phone': phone,
+            'company_name': company_name,
+            'sales_contact_id': sales_contact_id
+        }
 
-        return self.repository.create(customer)
+        try:
+            return self.repository.create(customer_data_dict)
+        except IntegrityError as e:
+            # Check if it's a duplicate email error
+            if "customers_email_key" in str(e) or "email" in str(e).lower():
+                raise ValidationError(f"This email address '{email}' is already used by another customer.")
+            # Other integrity errors
+            raise ValidationError("Data conflict: some information is already in use.")
 
     def update_customer(self, customer_id, customer_data, current_user):
         require_permission(current_user, Permission.UPDATE_CUSTOMER)
@@ -72,30 +80,29 @@ class CustomerService:
         except (ValueError, TypeError):
             raise ValidationError("Sales Contact ID must be a valid integer")
 
-        customer = Customer(
-            id=customer_id,
-            full_name=full_name,
-            email=email,
-            phone=phone,
-            company_name=company_name,
-            sales_contact_id=sales_contact_id
-        )
+        customer_data_dict = {
+            'full_name': full_name,
+            'email': email,
+            'phone': phone,
+            'company_name': company_name,
+            'sales_contact_id': sales_contact_id
+        }
 
-        return self.repository.update(customer)
+        try:
+            return self.repository.update(customer_id, customer_data_dict)
+        except IntegrityError as e:
+            # Vérifier si c'est une erreur d'email dupliqué
+            if "customers_email_key" in str(e) or "email" in str(e).lower():
+                raise ValidationError(f"Cette adresse email '{email}' est déjà utilisée par un autre client.")
+            # Autres erreurs d'intégrité
+            raise ValidationError("Conflit de données : certaines informations sont déjà utilisées.")
 
     def delete_customer(self, customer_id, current_user):
         require_permission(current_user, Permission.DELETE_CUSTOMER)
         return self.repository.delete(customer_id)
 
     def list_customers(self, current_user):
-        """List customers based on user role and permissions"""
+        """List customers - all users can see all customers (read-only access)"""
         require_permission(current_user, Permission.READ_CUSTOMER)
-        if current_user['role'] in ['management', 'admin', 'support']:
-            # Management/Admin/Support see all customers
-            return self.repository.get_all()
-        elif current_user['role'] == 'sales':
-            # Sales only see assigned customers
-            return self.repository.find_by_sales_contact(current_user['id'])
-        else:
-            # Other roles have no access
-            return []
+        # CONFORMITÉ: Tous les collaborateurs doivent pouvoir accéder à tous les clients en lecture seule
+        return self.repository.get_all()

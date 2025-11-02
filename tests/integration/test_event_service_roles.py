@@ -117,15 +117,15 @@ class TestEventServiceRoleBasedAccess:
         assert result == mock_events
 
     @patch('services.event.require_permission')
-    def test_list_events_support_sees_only_assigned(self,
+    def test_list_events_support_sees_all_events(self,
                                                     mock_require_permission,
                                                     event_service,
                                                     mock_repository,
                                                     support_user):
-        """Test that support users see only their assigned events"""
+        """Test that support users now see ALL events (conformité)"""
         # Setup
-        mock_events = [MagicMock(), MagicMock()]
-        mock_repository.find_by_support_contact.return_value = mock_events
+        mock_events = [MagicMock(), MagicMock(), MagicMock()]
+        mock_repository.get_all.return_value = mock_events
 
         # Execute
         result = event_service.list_events(support_user)
@@ -134,19 +134,20 @@ class TestEventServiceRoleBasedAccess:
         mock_require_permission.assert_called_once_with(
             support_user,
             Permission.READ_EVENT)
-        mock_repository.find_by_support_contact.assert_called_once_with(
-            support_user['id'])
-        mock_repository.get_all.assert_not_called()
+        mock_repository.get_all.assert_called_once()
+        mock_repository.find_by_support_contact.assert_not_called()
         assert result == mock_events
 
     @patch('services.event.require_permission')
-    def test_list_events_unknown_role_returns_empty(self,
+    def test_list_events_unknown_role_sees_all_events(self,
                                                     mock_require_permission,
                                                     event_service,
                                                     mock_repository):
-        """Test that unknown roles get empty list"""
+        """Test that even unknown roles now see ALL events (conformité)"""
         # Setup
         unknown_user = {'id': 5, 'name': 'Unknown', 'role': 'unknown'}
+        mock_events = [MagicMock(), MagicMock()]
+        mock_repository.get_all.return_value = mock_events
 
         # Execute
         result = event_service.list_events(unknown_user)
@@ -155,6 +156,6 @@ class TestEventServiceRoleBasedAccess:
         mock_require_permission.assert_called_once_with(unknown_user,
                                                         Permission.READ_EVENT
                                                         )
-        mock_repository.get_all.assert_not_called()
+        mock_repository.get_all.assert_called_once()
         mock_repository.find_by_support_contact.assert_not_called()
-        assert result == []
+        assert result == mock_events

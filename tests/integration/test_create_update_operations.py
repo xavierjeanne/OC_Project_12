@@ -48,12 +48,13 @@ class TestEmployeeOperations:
                                      mock_permission,
                                      employee_service,
                                      management_user):
-        """Test création d'employé avec validation complète"""
+        """Test création d'employé avec validation complète (inclut mot de passe)"""
         employee_data = {
             'name': 'John Doe',
             'email': 'john.doe@example.com',
             'employee_number': 'EMP001',
-            'role_id': 1
+            'role_id': 1,
+            'password': 'SecurePass123!'
         }
 
         # Mock return value for successful creation
@@ -69,11 +70,11 @@ class TestEmployeeOperations:
         employee_service.repository.create.assert_called_once()
 
         # Vérifier que les données sont correctement validées
-        created_employee = employee_service.repository.create.call_args[0][0]
-        assert created_employee.name == 'John Doe'
-        assert created_employee.email == 'john.doe@example.com'
-        assert created_employee.employee_number == 'EMP001'
-        assert created_employee.role_id == 1
+        created_employee_data = employee_service.repository.create.call_args[0][0]
+        assert created_employee_data['name'] == 'John Doe'
+        assert created_employee_data['email'] == 'john.doe@example.com'
+        assert created_employee_data['employee_number'] == 'EMP001'
+        assert created_employee_data['role_id'] == 1
 
     @patch('services.employee.require_permission')
     def test_create_employee_invalid_email(self,
@@ -127,9 +128,9 @@ class TestEmployeeOperations:
         mock_permission.assert_called_once()
         employee_service.repository.update.assert_called_once()
 
-        # Vérifier que le rôle a été changé
-        updated_employee = employee_service.repository.update.call_args[0][0]
-        assert updated_employee.role_id == 2
+        # Vérifier que le rôle a été changé - second argument est les données
+        updated_employee_data = employee_service.repository.update.call_args[0][1]
+        assert updated_employee_data['role_id'] == 2
 
 
 class TestContractOperations:
@@ -178,11 +179,11 @@ class TestContractOperations:
         contract_service.repository.create.assert_called_once()
 
         # Vérifier que les données sont correctement validées
-        created_contract = contract_service.repository.create.call_args[0][0]
-        assert created_contract.customer_id == 1
-        assert created_contract.total_amount == 5000.0
-        assert created_contract.remaining_amount == 3000.0
-        assert created_contract.sales_contact_id == 2
+        created_contract_data = contract_service.repository.create.call_args[0][0]
+        assert created_contract_data['customer_id'] == 1
+        assert created_contract_data['total_amount'] == 5000.0
+        assert created_contract_data['remaining_amount'] == 3000.0
+        assert created_contract_data['sales_contact_id'] == 2
 
     @patch('services.contract.require_permission')
     def test_create_contract_invalid_amounts(self,
@@ -233,10 +234,10 @@ class TestContractOperations:
         mock_permission.assert_called_once()
         contract_service.repository.update.assert_called_once()
 
-        # Vérifier que les relations sont mises à jour
-        updated_contract = contract_service.repository.update.call_args[0][0]
-        assert updated_contract.customer_id == 2
-        assert updated_contract.signed is True
+        # Vérifier que les relations sont mises à jour - second argument est les données
+        updated_contract_data = contract_service.repository.update.call_args[0][1]
+        assert updated_contract_data['customer_id'] == 2
+        assert updated_contract_data['signed'] is True
 
 
 class TestEventOperations:
@@ -286,10 +287,10 @@ class TestEventOperations:
         event_service.repository.create.assert_called_once()
 
         # Vérifier que les données sont correctement validées
-        created_event = event_service.repository.create.call_args[0][0]
-        assert created_event.name == 'Conference 2024'
-        assert created_event.attendees == 100
-        assert created_event.support_contact_id == 3
+        created_event_data = event_service.repository.create.call_args[0][0]
+        assert created_event_data['name'] == 'Conference 2024'
+        assert created_event_data['attendees'] == 100
+        assert created_event_data['support_contact_id'] == 3
 
     @patch('services.event.require_permission')
     def test_create_event_invalid_dates(self,
@@ -340,10 +341,10 @@ class TestEventOperations:
         mock_permission.assert_called_once()
         event_service.repository.update.assert_called_once()
 
-        # Vérifier que les relations sont mises à jour
-        updated_event = event_service.repository.update.call_args[0][0]
-        assert updated_event.customer_id == 2
-        assert updated_event.contract_id == 3
+        # Vérifier que les relations sont mises à jour - second argument est les données
+        updated_event_data = event_service.repository.update.call_args[0][1]
+        assert updated_event_data['customer_id'] == 2
+        assert updated_event_data['contract_id'] == 3
 
 
 class TestCustomerOperations:
@@ -392,9 +393,9 @@ class TestCustomerOperations:
         customer_service.repository.create.assert_called_once()
 
         # Vérifier que l'assignation est respectée
-        created_customer = customer_service.repository.create.call_args[0][0]
-        assert created_customer.full_name == 'John Smith'
-        assert created_customer.sales_contact_id == 5  # Assigné par management
+        created_customer_data = customer_service.repository.create.call_args[0][0]
+        assert created_customer_data['full_name'] == 'John Smith'
+        assert created_customer_data['sales_contact_id'] == 5  # Assigné par management
 
     @patch('services.customer.require_permission')
     def test_update_customer_email_validation(self,

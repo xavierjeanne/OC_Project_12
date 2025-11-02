@@ -1,40 +1,19 @@
 """
 Tests for authentication system
 Tests password hashing, login attempts, user creation, etc.
+Migré vers SQLite in-memory pour des performances optimales
 """
 
 import pytest
 
-from db.config import engine
-from models import Base, Employee, Role, Session
+from models import Employee, Role
 from services.auth import AuthService
 
 
-@pytest.fixture(scope="session", autouse=True)
-def setup_auth_database():
-    """Setup database for auth tests"""
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
-
-    # Create roles needed for tests
-    session = Session()
-    try:
-        # Create test roles
-        roles_data = [
-            {"name": "sales", "description": "Sales team"},
-            {"name": "support", "description": "Support team"},
-            {"name": "management", "description": "Management team"},
-            {"name": "admin", "description": "Admin team"}
-        ]
-
-        for role_data in roles_data:
-            role = Role(**role_data)
-            session.add(role)
-
-        session.commit()
-        print("✅ Auth test database setup complete")
-    finally:
-        session.close()
+@pytest.fixture
+def auth_session(test_db):
+    """Setup session for auth tests - roles are already created at session level"""
+    return test_db
 
 
 @pytest.fixture
@@ -44,14 +23,34 @@ def auth_service():
 
 
 @pytest.fixture
-def test_roles():
-    """Get test roles"""
-    session = Session()
-    try:
-        roles = session.query(Role).all()
-        return {role.name: role for role in roles}
-    finally:
-        session.close()
+def test_roles(auth_session):
+    """Get test roles - returns fresh objects attached to current session"""
+    roles_data = {}
+    roles = auth_session.query(Role).all()
+    
+    # Store role IDs instead of objects to avoid DetachedInstanceError
+    for role in roles:
+        roles_data[role.name] = {
+            'id': role.id,
+            'name': role.name,
+            'description': role.description
+        }
+    
+    # Return a dict-like object that allows accessing both id and full role
+    class RoleHelper:
+        def __init__(self, session, roles_data):
+            self.session = session
+            self.roles_data = roles_data
+            
+        def __getitem__(self, key):
+            if key not in self.roles_data:
+                raise KeyError(f"Role '{key}' not found")
+            
+            # Return fresh role object from current session
+            role_id = self.roles_data[key]['id']
+            return self.session.query(Role).filter(Role.id == role_id).first()
+    
+    return RoleHelper(auth_session, roles_data)
 
 
 class TestAuthService:
@@ -82,7 +81,7 @@ class TestAuthService:
         # Wrong password should not verify
         assert not auth_service.verify_password(hashed, wrong_password)
 
-    def test_create_employee_with_password(self, auth_service, test_roles):
+    def test_create_employee_with_password(self, auth_service, test_roles, auth_session):
         """Test creating employee with password"""
         employee_data = auth_service.create_employee_with_password(
             name="Test User",
@@ -98,27 +97,19 @@ class TestAuthService:
         assert employee_data["employee_number"].startswith("EMP")
 
         # Verify employee was created in database
-        session = Session()
-        try:
-            employee = session.query(Employee).filter_by(
-                employee_number=employee_data["employee_number"]
-            ).first()
+        employee = auth_session.query(Employee).filter_by(
+            employee_number=employee_data["employee_number"]
+        ).first()
 
-            assert employee is not None
-            assert employee.password_hash is not None
-            assert employee.password_hash != "SecurePass123!"  # Should be hashed
-        finally:
-            session.close()
+        assert employee is not None
+        assert employee.password_hash is not None
+        assert employee.password_hash != "SecurePass123!"  # Should be hashed
 
-    def test_employee_number_generation(self, auth_service, test_roles):
+    def test_employee_number_generation(self, auth_service, test_roles, auth_session):
         """Test auto-generation of employee numbers"""
         # Clear existing employees first
-        session = Session()
-        try:
-            session.query(Employee).delete()
-            session.commit()
-        finally:
-            session.close()
+        auth_session.query(Employee).delete()
+        auth_session.commit()
 
         # Create first employee
         emp1 = auth_service.create_employee_with_password(
@@ -140,7 +131,7 @@ class TestAuthService:
         assert emp1["employee_number"] == "EMP001"
         assert emp2["employee_number"] == "EMP002"
 
-    def test_authenticate_user_success(self, auth_service, test_roles):
+    def test_authenticate_user_success(self, auth_service, test_roles, auth_session):
         """Test successful user authentication"""
         password = "AuthTestPassword123!"
 
@@ -162,14 +153,10 @@ class TestAuthService:
         assert employee is not None
 
         # Check employee data through fresh session to avoid detached instance
-        session = Session()
-        try:
-            fresh_employee = session.query(Employee).filter_by(
-                employee_number=employee_data["employee_number"]
-            ).first()
-            assert fresh_employee.name == "Auth Test User"
-        finally:
-            session.close()
+        fresh_employee = auth_session.query(Employee).filter_by(
+            employee_number=employee_data["employee_number"]
+        ).first()
+        assert fresh_employee.name == "Auth Test User"
 
         assert "successful" in message.lower()
 
@@ -245,7 +232,7 @@ class TestAuthService:
         assert success is False
         assert "locked" in message.lower()
 
-    def test_successful_login_resets_attempts(self, auth_service, test_roles):
+    def test_successful_login_resets_attempts(self, auth_service, test_roles, auth_session):
         """Test that successful login resets failed attempts"""
         # Create test user
         employee_data = auth_service.create_employee_with_password(
@@ -270,30 +257,22 @@ class TestAuthService:
         assert success is True
 
         # Check that failed attempts were reset
-        session = Session()
-        try:
-            employee = session.query(Employee).filter_by(
-                employee_number=employee_number
-            ).first()
+        employee = auth_session.query(Employee).filter_by(
+            employee_number=employee_number
+        ).first()
 
-            assert employee.failed_login_attempts == 0
-            assert employee.last_login is not None
-        finally:
-            session.close()
+        assert employee.failed_login_attempts == 0
+        assert employee.last_login is not None
 
 
 class TestEmployeeModel:
     """Test Employee model authentication methods"""
 
-    def test_employee_generate_number(self):
+    def test_employee_generate_number(self, auth_session):
         """Test static employee number generation"""
-        session = Session()
-        try:
-            # Should start with EMP001 when no employees exist
-            session.query(Employee).delete()
-            session.commit()
+        # Should start with EMP001 when no employees exist
+        auth_session.query(Employee).delete()
+        auth_session.commit()
 
-            number = Employee.generate_employee_number(session)
-            assert number == "EMP001"
-        finally:
-            session.close()
+        number = Employee.generate_employee_number(auth_session)
+        assert number == "EMP001"

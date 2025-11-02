@@ -1,38 +1,17 @@
 """
 Tests for BaseRepository
-Demonstrates how to test the repository pattern
+Demonstrates how to test the repository pattern with PostgreSQL
 """
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-from models import Base, Customer
+from models import Customer
 from repositories.customer import CustomerRepository
 
 
-# Test fixtures
 @pytest.fixture
-def test_engine():
-    """Create an in-memory SQLite database for testing"""
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    return engine
-
-
-@pytest.fixture
-def test_session(test_engine):
-    """Create a test database session"""
-    Session = sessionmaker(bind=test_engine)
-    session = Session()
-    yield session
-    session.close()
-
-
-@pytest.fixture
-def customer_repo(test_session):
+def customer_repo(test_db):
     """Create a customer repository instance"""
-    return CustomerRepository(test_session)
+    return CustomerRepository(test_db)
 
 
 @pytest.fixture
@@ -257,16 +236,31 @@ class TestCustomerRepository:
         assert customer_repo.email_exists("notfound@example.com") is False
 
     def test_get_customers_without_sales_contact(
-        self, customer_repo, sample_customer_data
+        self, customer_repo, sample_customer_data, test_db
     ):
         """Test getting customers without sales contact"""
+        # Créer un employé sales pour la clé étrangère
+        from models import Role, Employee
+        from services.auth import AuthService
+        
+        sales_role = test_db.query(Role).filter_by(name="sales").first()
+        auth_service = AuthService()
+        
+        # Créer un employé sales
+        sales_employee_data = auth_service.create_employee_with_password(
+            name="Sales Employee",
+            email="sales@example.com",
+            role_id=sales_role.id,
+            password="TestPass123!"
+        )
+        
         # Customer without sales contact
         customer_repo.create(sample_customer_data)
 
-        # Customer with sales contact (needs sales_contact_id)
+        # Customer with sales contact (utilise l'ID de l'employé créé)
         customer_repo.create(
             {**sample_customer_data, "email": "with_sales@example.com",
-             "sales_contact_id": 1}
+             "sales_contact_id": sales_employee_data["id"]}
         )
 
         results = customer_repo.get_customers_without_sales_contact()

@@ -132,6 +132,24 @@ def create_database():
     print("Creating tables...")
     init_db()
 
+    # Clear any remaining data (in case of foreign key issues)
+    session = Session()
+    try:
+        # Delete all data in correct order
+        from models import Employee, Customer, Contract, Event
+        session.query(Event).delete()
+        session.query(Contract).delete() 
+        session.query(Customer).delete()
+        session.query(Employee).delete()
+        session.query(Role).delete()
+        session.commit()
+        print("All existing data cleared")
+    except Exception as e:
+        session.rollback()
+        print(f"Warning: Could not clear existing data: {e}")
+    finally:
+        session.close()
+
     print("Creating base roles...")
     create_base_roles()
 
@@ -144,11 +162,17 @@ def main():
     print("CRM DATABASE INITIALIZATION")
     print("=" * 50)
 
-    response = input("Do you want to create the database? (y/N): ")
-
-    if response.lower() != 'y':
-        print("Database initialization cancelled")
-        return False
+    # Check for --force flag
+    import sys
+    force_mode = "--force" in sys.argv
+    
+    if not force_mode:
+        response = input("Do you want to create the database? (y/N): ")
+        if response.lower() != 'y':
+            print("Database initialization cancelled")
+            return False
+    else:
+        print("Force mode: Proceeding without confirmation...")
 
     try:
         create_database()

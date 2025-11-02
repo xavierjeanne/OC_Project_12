@@ -123,15 +123,15 @@ class TestContractServiceRoleBasedAccess:
         assert result == mock_contracts
 
     @patch('services.contract.require_permission')
-    def test_list_contracts_sales_sees_only_assigned(self,
+    def test_list_contracts_sales_sees_all_contracts(self,
                                                      mock_require_permission,
                                                      contract_service,
                                                      mock_repository,
                                                      sales_user):
-        """Test that sales users see only their assigned contracts"""
+        """Test that sales users now see ALL contracts (conformité)"""
         # Setup
-        mock_contracts = [MagicMock(), MagicMock()]
-        mock_repository.find_by_sales_contact.return_value = mock_contracts
+        mock_contracts = [MagicMock(), MagicMock(), MagicMock()]
+        mock_repository.get_all.return_value = mock_contracts
 
         # Execute
         result = contract_service.list_contracts(sales_user)
@@ -139,19 +139,20 @@ class TestContractServiceRoleBasedAccess:
         # Verify
         mock_require_permission.assert_called_once_with(
             sales_user, Permission.READ_CONTRACT)
-        mock_repository.find_by_sales_contact.assert_called_once_with(
-            sales_user['id'])
-        mock_repository.get_all.assert_not_called()
+        mock_repository.get_all.assert_called_once()
+        mock_repository.find_by_sales_contact.assert_not_called()
         assert result == mock_contracts
 
     @patch('services.contract.require_permission')
-    def test_list_contracts_unknown_role_returns_empty(self,
+    def test_list_contracts_unknown_role_sees_all_contracts(self,
                                                        mock_require_permission,
                                                        contract_service,
                                                        mock_repository):
-        """Test that unknown roles get empty list"""
+        """Test that even unknown roles now see ALL contracts (conformité)"""
         # Setup
         unknown_user = {'id': 5, 'name': 'Unknown', 'role': 'unknown'}
+        mock_contracts = [MagicMock(), MagicMock()]
+        mock_repository.get_all.return_value = mock_contracts
 
         # Execute
         result = contract_service.list_contracts(unknown_user)
@@ -159,6 +160,6 @@ class TestContractServiceRoleBasedAccess:
         # Verify
         mock_require_permission.assert_called_once_with(
             unknown_user, Permission.READ_CONTRACT)
-        mock_repository.get_all.assert_not_called()
+        mock_repository.get_all.assert_called_once()
         mock_repository.find_by_sales_contact.assert_not_called()
-        assert result == []
+        assert result == mock_contracts
