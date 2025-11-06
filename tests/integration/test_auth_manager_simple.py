@@ -27,7 +27,7 @@ class TestAuthenticationManagerSimple:
             "name": "Test User",
             "email": "test@example.com",
             "role": "admin",
-            "role_id": 4
+            "role_id": 4,
         }
 
     def test_initialization(self, auth_manager):
@@ -48,10 +48,10 @@ class TestAuthenticationManagerSimple:
         # Mock JWT token creation
         auth_manager.jwt_service.create_access_token = MagicMock(
             return_value="access_token"
-            )
+        )
         auth_manager.jwt_service.create_refresh_token = MagicMock(
             return_value="refresh_token"
-            )
+        )
 
         # Mock token saving (to avoid file I/O)
         auth_manager._save_tokens = MagicMock()
@@ -66,11 +66,14 @@ class TestAuthenticationManagerSimple:
 
         # Verify method calls
         auth_manager.auth_service.authenticate_user.assert_called_once_with(
-            "EMP001", "password123")
+            "EMP001", "password123"
+        )
         auth_manager.jwt_service.create_access_token.assert_called_once_with(
-            sample_employee_data)
+            sample_employee_data
+        )
         auth_manager.jwt_service.create_refresh_token.assert_called_once_with(
-            sample_employee_data)
+            sample_employee_data
+        )
         auth_manager._save_tokens.assert_called_once()
 
     def test_login_failure(self, auth_manager):
@@ -106,9 +109,10 @@ class TestAuthenticationManagerSimple:
         result = auth_manager.logout()
 
         assert result["success"] is True
-        assert ("No user currently logged in"
-                in result["message"] or "Goodbye"
-                in result["message"])
+        assert (
+            "No user currently logged in" in result["message"]
+            or "Goodbye" in result["message"]
+        )
 
     def test_get_current_user_cached(self, auth_manager, sample_employee_data):
         """Test getting current user when cached"""
@@ -148,7 +152,7 @@ class TestAuthenticationManagerSimple:
         mock_tokens = {
             "access_token": "fake_token",
             "refresh_token": "fake_refresh",
-            "created_at": "2025-10-16T10:00:00"
+            "created_at": "2025-10-16T10:00:00",
         }
         auth_manager._load_tokens = MagicMock(return_value=mock_tokens)
 

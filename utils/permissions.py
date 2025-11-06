@@ -4,9 +4,9 @@ Defines permissions for each role (sales, support, management)
 """
 
 from enum import Enum
-from typing import Optional
 
 from models import Employee
+from typing import Optional
 
 
 class Permission(Enum):
@@ -41,8 +41,6 @@ class Permission(Enum):
 
 class PermissionError(Exception):
     """Exception raised when access is unauthorized"""
-
-    pass
 
 
 # Permission definitions by role
@@ -139,7 +137,7 @@ def has_permission(employee, permission: Permission) -> bool:
 
     # Handle both Employee objects and dicts
     if isinstance(employee, dict):
-        role = employee.get('role', '').lower()
+        role = employee.get("role", "").lower()
     else:
         # Employee object
         role = employee.role.lower() if employee.role else None
@@ -167,8 +165,8 @@ def require_permission(employee, permission: Permission) -> None:
     if not has_permission(employee, permission):
         # Handle both Employee objects and dicts
         if isinstance(employee, dict):
-            name = employee.get('name', 'Unknown')
-            role = employee.get('role', 'Unknown')
+            name = employee.get("name", "Unknown")
+            role = employee.get("role", "Unknown")
         else:
             # Employee object
             name = employee.name

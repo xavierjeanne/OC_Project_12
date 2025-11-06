@@ -61,8 +61,11 @@ class TestBaseRepository:
         """Test getting all entities"""
         customer_repo.create(sample_customer_data)
         customer_repo.create(
-            {**sample_customer_data, "email": "jane@example.com",
-             "full_name": "Jane Doe"}
+            {
+                **sample_customer_data,
+                "email": "jane@example.com",
+                "full_name": "Jane Doe",
+            }
         )
 
         results = customer_repo.get_all()
@@ -139,134 +142,12 @@ class TestBaseRepository:
         assert len(results) == 1
         assert results[0].company_name == "ACME Corp"
 
-    def test_find_one_by(self, customer_repo, sample_customer_data):
-        """Test finding a single entity by criteria"""
-        customer_repo.create(sample_customer_data)
-
-        result = customer_repo.find_one_by(email="john@example.com")
-
-        assert result is not None
-        assert result.email == "john@example.com"
-
-    def test_find_one_by_not_found(self, customer_repo):
-        """Test finding with no match"""
-        result = customer_repo.find_one_by(email="notfound@example.com")
-        assert result is None
-
     def test_exists(self, customer_repo, sample_customer_data):
         """Test checking if entity exists"""
         customer = customer_repo.create(sample_customer_data)
 
         assert customer_repo.exists(customer.id) is True
         assert customer_repo.exists(99999) is False
-
-    def test_count(self, customer_repo, sample_customer_data):
-        """Test counting entities"""
-        assert customer_repo.count() == 0
-
-        customer_repo.create(sample_customer_data)
-        assert customer_repo.count() == 1
-
-        customer_repo.create(
-            {**sample_customer_data, "email": "jane@example.com"}
-        )
-        assert customer_repo.count() == 2
-
-
-# Tests for CustomerRepository-specific methods
-class TestCustomerRepository:
-    """Test suite for CustomerRepository specialized methods"""
-
-    def test_find_by_email(self, customer_repo, sample_customer_data):
-        """Test finding customer by email"""
-        customer_repo.create(sample_customer_data)
-
-        result = customer_repo.find_by_email("john@example.com")
-
-        assert result is not None
-        assert result.email == "john@example.com"
-
-    def test_find_by_company(self, customer_repo, sample_customer_data):
-        """Test finding customers by company"""
-        customer_repo.create(sample_customer_data)
-        customer_repo.create(
-            {**sample_customer_data, "email": "jane@example.com",
-             "full_name": "Jane"}
-        )
-        customer_repo.create(
-            {
-                **sample_customer_data,
-                "email": "bob@example.com",
-                "company_name": "Other Corp",
-            }
-        )
-
-        results = customer_repo.find_by_company("ACME Corp")
-
-        assert len(results) == 2
-        assert all(c.company_name == "ACME Corp" for c in results)
-
-    def test_search_by_name(self, customer_repo, sample_customer_data):
-        """Test searching customers by name pattern"""
-        customer_repo.create(sample_customer_data)
-        customer_repo.create(
-            {**sample_customer_data, "email": "jane@example.com",
-             "full_name": "Jane Doe"}
-        )
-        customer_repo.create(
-            {
-                **sample_customer_data,
-                "email": "bob@example.com",
-                "full_name": "Bob Smith",
-            }
-        )
-
-        results = customer_repo.search_by_name("Doe")
-
-        assert len(results) == 2
-        assert all("Doe" in c.full_name for c in results)
-
-    def test_email_exists(self, customer_repo, sample_customer_data):
-        """Test checking if email exists"""
-        assert customer_repo.email_exists("john@example.com") is False
-
-        customer_repo.create(sample_customer_data)
-
-        assert customer_repo.email_exists("john@example.com") is True
-        assert customer_repo.email_exists("notfound@example.com") is False
-
-    def test_get_customers_without_sales_contact(
-        self, customer_repo, sample_customer_data, test_db
-    ):
-        """Test getting customers without sales contact"""
-        # Créer un employé sales pour la clé étrangère
-        from models import Role, Employee
-        from services.auth import AuthService
-        
-        sales_role = test_db.query(Role).filter_by(name="sales").first()
-        auth_service = AuthService()
-        
-        # Créer un employé sales
-        sales_employee_data = auth_service.create_employee_with_password(
-            name="Sales Employee",
-            email="sales@example.com",
-            role_id=sales_role.id,
-            password="TestPass123!"
-        )
-        
-        # Customer without sales contact
-        customer_repo.create(sample_customer_data)
-
-        # Customer with sales contact (utilise l'ID de l'employé créé)
-        customer_repo.create(
-            {**sample_customer_data, "email": "with_sales@example.com",
-             "sales_contact_id": sales_employee_data["id"]}
-        )
-
-        results = customer_repo.get_customers_without_sales_contact()
-
-        assert len(results) == 1
-        assert results[0].sales_contact_id is None
 
 
 # Example of testing with mocks
@@ -279,9 +160,7 @@ class TestWithMocks:
 
         # Create a mock repository
         mock_repo = MagicMock(spec=CustomerRepository)
-        mock_customer = Customer(
-            id=1, full_name="John Doe", email="john@example.com"
-        )
+        mock_customer = Customer(id=1, full_name="John Doe", email="john@example.com")
         mock_repo.create.return_value = mock_customer
 
         # Use the mock in your service

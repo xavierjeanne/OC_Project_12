@@ -26,6 +26,8 @@ class Contract(Base):
     )
 
     def __repr__(self):
-        message = (f"id={self.id}, customer_id={self.customer_id},"
-                   f" amount={self.total_amount}")
+        message = (
+            f"id={self.id}, customer_id={self.customer_id},"
+            f" amount={self.total_amount}"
+        )
         return f"<Contract({message})>"

@@ -11,8 +11,6 @@ from typing import Optional, Tuple
 class ValidationError(Exception):
     """Exception raised during validation errors"""
 
-    pass
-
 
 def validate_email(email: str) -> str:
     """
@@ -32,9 +30,7 @@ def validate_email(email: str) -> str:
 
     email = email.strip().lower()
 
-    email_pattern = (
-        r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]+(?:\.[a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$"
-        )
+    email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]+(?:\.[a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$"
 
     if not re.match(email_pattern, email):
         raise ValidationError(f"Email '{email}' is not valid")
@@ -325,12 +321,7 @@ def validate_date(date_value, field_name: str = "date"):
     if isinstance(date_value, str):
         try:
             # Try different date formats
-            formats = [
-                "%Y-%m-%d",
-                "%Y-%m-%d %H:%M:%S",
-                "%d/%m/%Y",
-                "%d-%m-%Y"
-            ]
+            formats = ["%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%d/%m/%Y", "%d-%m-%Y"]
             for fmt in formats:
                 try:
                     return datetime.strptime(date_value, fmt)
@@ -340,7 +331,7 @@ def validate_date(date_value, field_name: str = "date"):
         except ValueError:
             raise ValidationError(
                 f"The {field_name} field must be a valid date "
-                f"(YYYY-MM-DD or DD/MM/YYYY format)"
+                "(YYYY-MM-DD or DD/MM/YYYY format)"
             )
 
     raise ValidationError(f"The {field_name} field must be a valid date")

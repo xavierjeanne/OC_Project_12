@@ -8,6 +8,7 @@ from datetime import datetime, UTC
 from pathlib import Path
 from typing import Optional, Dict, Any
 
+from sqlalchemy.orm import joinedload
 from models import Employee, Session
 from services.auth import AuthService
 from services.jwt_service import JWTService
@@ -177,8 +178,11 @@ class AuthenticationManager:
         # Get full employee object for permission check
         session = Session()
         try:
-            from sqlalchemy.orm import joinedload
-            employee = session.query(Employee).options(joinedload(Employee.employee_role)).get(self.current_user["id"])
+            employee = (session.query(Employee)
+                        .options(joinedload(Employee.employee_role))
+                        .get(self.current_user["id"])
+                        .options(joinedload(Employee.employee_role))
+                        .get(self.current_user["id"]))
             if not employee:
                 print("User session invalid")
                 self.logout()

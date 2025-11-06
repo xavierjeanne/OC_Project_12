@@ -29,6 +29,7 @@ class Event(Base):
     support_contact = relationship("Employee", back_populates="events_support")
 
     def __repr__(self):
-        message = (f"id={self.id}, name='{self.name}',"
-                   f" customer_id={self.customer_id}")
+        message = (
+            f"id={self.id}, name='{self.name}'," f" customer_id={self.customer_id}"
+        )
         return f"<Event({message})>"

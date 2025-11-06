@@ -1,6 +1,6 @@
 """
-Tests étendus pour améliorer la couverture des validateurs
-Tests pour tous les cas d'erreur et formats non couverts
+Extended tests to improve validator coverage
+Tests for all error cases and uncovered formats
 """
 
 import pytest
@@ -18,15 +18,15 @@ from utils.validators import (
     validate_role,
     validate_string_not_empty,
     validate_date,
-    validate_non_negative_integer
+    validate_non_negative_integer,
 )
 
 
 class TestEmailValidatorExtended:
-    """Tests étendus pour la validation d'email"""
+    """Extended tests for email validation"""
 
     def test_validate_email_edge_cases(self):
-        """Test cas limites validation email"""
+        """Test email validation edge cases"""
         # Emails valides
         assert validate_email("a@b.co") == "a@b.co"
         assert validate_email("user-name@domain.com") == "user-name@domain.com"
@@ -34,7 +34,7 @@ class TestEmailValidatorExtended:
         assert validate_email("123@domain.com") == "123@domain.com"
 
     def test_validate_email_invalid_cases(self):
-        """Test cas invalides pour email"""
+        """Test invalid email cases"""
         invalid_emails = [
             "@domain.com",  # Pas de partie locale
             "user@",  # Pas de domaine
@@ -43,7 +43,7 @@ class TestEmailValidatorExtended:
             "user@domain..com",  # Double point
             "user@domain.c",  # TLD trop court
             "user name@domain.com",  # Espace dans nom utilisateur
-            "user@dom ain.com"  # Espace dans domaine
+            "user@dom ain.com",  # Espace dans domaine
         ]
 
         for email in invalid_emails:
@@ -51,7 +51,7 @@ class TestEmailValidatorExtended:
                 validate_email(email)
 
     def test_validate_email_none_and_whitespace(self):
-        """Test email None et espaces"""
+        """Test email None and whitespace"""
         with pytest.raises(ValidationError, match="Email is required"):
             validate_email(None)
 
@@ -60,10 +60,10 @@ class TestEmailValidatorExtended:
 
 
 class TestPhoneValidatorExtended:
-    """Tests étendus pour la validation de téléphone"""
+    """Extended tests for phone validation"""
 
     def test_validate_phone_valid_formats(self):
-        """Test formats valides de téléphone"""
+        """Test valid phone formats"""
         valid_phones = [
             "0123456789",
             "01 23 45 67 89",
@@ -82,14 +82,14 @@ class TestPhoneValidatorExtended:
             assert isinstance(result, str)
 
     def test_validate_phone_invalid_formats(self):
-        """Test formats invalides de téléphone"""
+        """Test invalid phone formats"""
         invalid_phones = [
-            "123456789",     # Trop court (9 chiffres)
-            "1234567890123456",  # Trop long (16 chiffres)
-            "abcdefghij",    # Lettres
-            "012-345-abc",     # Mélange lettres/chiffres
-            "++33123456789",   # Double +
-            "012 345 abc 89",  # Lettres au milieu
+            "123456789",  # Too short (9 digits)
+            "1234567890123456",  # Too long (16 digits)
+            "abcdefghij",  # Letters
+            "012-345-abc",  # Mix of letters/numbers
+            "++33123456789",  # Double +
+            "012 345 abc 89",  # Letters in middle
         ]
 
         for phone in invalid_phones:
@@ -97,19 +97,19 @@ class TestPhoneValidatorExtended:
                 validate_phone(phone)
 
     def test_validate_phone_none_empty(self):
-        """Test téléphone None et vide"""
+        """Test phone None and empty"""
         assert validate_phone(None) is None
         assert validate_phone("") is None
-        # Note: validate_phone considère "   " comme invalide après strip()
+        # Note: validate_phone considers "   " as invalid after strip()
         with pytest.raises(ValidationError):
             validate_phone("   ")
 
 
 class TestAmountValidatorsExtended:
-    """Tests étendus pour la validation des montants"""
+    """Extended tests for amount validation"""
 
     def test_validate_positive_amount_edge_cases(self):
-        """Test cas limites montant positif"""
+        """Test positive amount edge cases"""
         # Valeurs valides
         assert validate_positive_amount(0.001) == 0.001
         assert validate_positive_amount(999999.99) == 999999.99
@@ -117,7 +117,7 @@ class TestAmountValidatorsExtended:
         assert validate_positive_amount(100) == 100.0
 
     def test_validate_positive_amount_invalid_types(self):
-        """Test types invalides pour montant positif"""
+        """Test invalid types for positive amount"""
         invalid_values = ["abc", "", "not_a_number", [], {}, object()]
 
         for value in invalid_values:
@@ -125,35 +125,35 @@ class TestAmountValidatorsExtended:
                 validate_positive_amount(value)
 
     def test_validate_positive_amount_custom_field_name(self):
-        """Test message d'erreur personnalisé"""
+        """Test custom error message"""
         with pytest.raises(ValidationError, match="total_amount must be positive"):
             validate_positive_amount(-10, "total_amount")
 
     def test_validate_non_negative_amount_edge_cases(self):
-        """Test cas limites montant non-négatif"""
+        """Test non-negative amount edge cases"""
         assert validate_non_negative_amount(0) == 0.0
         assert validate_non_negative_amount(0.0) == 0.0
         assert validate_non_negative_amount("0") == 0.0
 
     def test_validate_remaining_amount_edge_cases(self):
-        """Test cas limites montant restant"""
-        # Cas valides
-        validate_remaining_amount(1000.0, 1000.0)  # Égal
-        validate_remaining_amount(1000.0, 0.0)     # Zéro
-        validate_remaining_amount(0.0, 0.0)        # Les deux à zéro
+        """Test remaining amount edge cases"""
+        # Valid cases
+        validate_remaining_amount(1000.0, 1000.0)  # Equal
+        validate_remaining_amount(1000.0, 0.0)  # Zero
+        validate_remaining_amount(0.0, 0.0)  # Both zero
 
     def test_validate_remaining_amount_precision(self):
-        """Test précision montant restant"""
+        """Test remaining amount precision"""
         with pytest.raises(ValidationError):
-            validate_remaining_amount(100.00, 100.01)  # Différence de centimes
+            validate_remaining_amount(100.00, 100.01)  # Cent difference
 
 
 class TestDateValidatorsExtended:
-    """Tests étendus pour la validation des dates"""
+    """Extended tests for date validation"""
 
     def test_validate_date_formats(self):
-        """Test différents formats de date"""
-        # Formats supportés
+        """Test different date formats"""
+        # Supported formats
         valid_dates = [
             ("2024-06-15", datetime(2024, 6, 15)),
             ("15/06/2024", datetime(2024, 6, 15)),
@@ -167,12 +167,12 @@ class TestDateValidatorsExtended:
     def test_validate_date_invalid_formats(self):
         """Test formats invalides de date"""
         invalid_dates = [
-            "2024/06/15",     # Format non supporté
-            "06-15-2024",     # Format américain
-            "invalid_date",   # Pas une date
-            "2024-13-01",     # Mois invalide
-            "2024-06-32",     # Jour invalide
-            "2024-02-30",     # Jour invalide pour février
+            "2024/06/15",  # Format non supporté
+            "06-15-2024",  # Format américain
+            "invalid_date",  # Pas une date
+            "2024-13-01",  # Mois invalide
+            "2024-06-32",  # Jour invalide
+            "2024-02-30",  # Jour invalide pour février
         ]
 
         for date_str in invalid_dates:
@@ -215,13 +215,13 @@ class TestIntegerValidatorsExtended:
     """Tests étendus pour la validation des entiers"""
 
     def test_validate_positive_integer_edge_cases(self):
-        """Test cas limites entier positif"""
+        """Test cas limites entier positi"""
         assert validate_positive_integer(1) == 1
         assert validate_positive_integer("100") == 100
         assert validate_positive_integer(999999) == 999999
 
     def test_validate_positive_integer_invalid_types(self):
-        """Test types invalides pour entier positif"""
+        """Test types invalides pour entier positi"""
         invalid_values = ["abc", "", "12.5", [], {}, object()]
 
         for value in invalid_values:
@@ -229,18 +229,18 @@ class TestIntegerValidatorsExtended:
                 validate_positive_integer(value)
 
     def test_validate_positive_integer_custom_field_name(self):
-        """Test message d'erreur personnalisé entier positif"""
+        """Test message d'erreur personnalisé entier positi"""
         with pytest.raises(ValidationError, match="attendees.*positive"):
             validate_positive_integer(-1, "attendees")
 
     def test_validate_non_negative_integer_edge_cases(self):
-        """Test cas limites entier non-négatif"""
+        """Test cas limites entier non-négati"""
         assert validate_non_negative_integer(0) == 0
         assert validate_non_negative_integer("0") == 0
         assert validate_non_negative_integer(1000) == 1000
 
     def test_validate_non_negative_integer_none_handling(self):
-        """Test gestion None pour entier non-négatif"""
+        """Test gestion None pour entier non-négati"""
         # Cette fonction a une version qui accepte None, testons les deux comportements
         try:
             result = validate_non_negative_integer(None)
@@ -251,7 +251,7 @@ class TestIntegerValidatorsExtended:
             pass
 
     def test_validate_non_negative_integer_invalid_types(self):
-        """Test types invalides pour entier non-négatif"""
+        """Test types invalides pour entier non-négati"""
         invalid_values = ["abc", "", "12.5", [], {}, object()]
 
         for value in invalid_values:
@@ -266,9 +266,10 @@ class TestStringValidatorExtended:
         """Test cas limites chaîne non-vide"""
         assert validate_string_not_empty("a") == "a"
         assert validate_string_not_empty("  a  ") == "a"
-        assert validate_string_not_empty(
-            "très long texte avec des accents éàç"
-            ) == "très long texte avec des accents éàç"
+        assert (
+            validate_string_not_empty("très long texte avec des accents éàç")
+            == "très long texte avec des accents éàç"
+        )
 
     def test_validate_string_not_empty_custom_field_name(self):
         """Test message d'erreur personnalisé chaîne"""

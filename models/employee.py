@@ -46,8 +46,9 @@ class Employee(Base):
     def generate_employee_number(session):
         """Generate next employee number in format EMP001, EMP002, etc."""
         # Find the last employee number
-        last_employee = session.query(Employee).order_by(Employee.
-                                                         employee_number.desc()).first()
+        last_employee = (
+            session.query(Employee).order_by(Employee.employee_number.desc()).first()
+        )
 
         if not last_employee:
             return "EMP001"

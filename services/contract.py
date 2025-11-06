@@ -1,13 +1,16 @@
-
-
 from models import Contract
 from repositories.contract import ContractRepository
 from utils.permissions import Permission, require_permission
 from utils.validators import (validate_string_not_empty, validate_positive_amount,
                               validate_non_negative_amount, ValidationError)
+from utils.sentry_config import (
+    log_contract_signature,
+    capture_exceptions
+)
 
 
 class ContractService:
+
     def __init__(self, contract_repository: ContractRepository):
         self.repository = contract_repository
 
@@ -17,11 +20,11 @@ class ContractService:
     def create_contract(self, contract_data, current_user):
         require_permission(current_user, Permission.CREATE_CONTRACT)
 
-        # Validation des champs obligatoires
+        # Validate required fields
         customer_id = validate_string_not_empty(contract_data["customer_id"],
                                                 "customer_id")
 
-        # Validation des montants
+        # Validate amounts
         total_amount = validate_positive_amount(
             contract_data.get("total_amount", 0.0), "total_amount"
         )
@@ -29,57 +32,7 @@ class ContractService:
             contract_data.get("remaining_amount", total_amount), "remaining_amount"
         )
 
-        # Validation que remaining_amount <= total_amount
-        if remaining_amount > total_amount:
-            raise ValidationError(
-                "Remaining amount cannot be greater than total amount"
-            )
-
-        # Champs optionnels
-        date_created = contract_data.get("date_created")
-        signed = bool(contract_data.get("signed", False))
-
-        # Relation avec le sales_contact (peut être modifié par management)
-        if current_user['role'] in ['management', 'admin']:
-            sales_contact_id = contract_data.get("sales_contact_id", current_user['id'])
-        else:
-            sales_contact_id = current_user['id']
-
-        try:
-            customer_id = int(customer_id)
-            sales_contact_id = int(sales_contact_id)
-        except (ValueError, TypeError):
-            raise ValidationError(
-                "Customer ID and Sales Contact ID must be valid integers"
-                )
-
-        contract_data_dict = {
-            'customer_id': customer_id,
-            'sales_contact_id': sales_contact_id,
-            'total_amount': total_amount,
-            'remaining_amount': remaining_amount,
-            'date_created': date_created,
-            'signed': signed
-        }
-
-        return self.repository.create(contract_data_dict)
-
-    def update_contract(self, contract_id, contract_data, current_user):
-        require_permission(current_user, Permission.UPDATE_CONTRACT)
-
-        # Validation required fields
-        customer_id = validate_string_not_empty(contract_data["customer_id"],
-                                                "customer_id")
-
-        # Validation amounts
-        total_amount = validate_positive_amount(
-            contract_data.get("total_amount", 0.0), "total_amount"
-        )
-        remaining_amount = validate_non_negative_amount(
-            contract_data.get("remaining_amount", total_amount), "remaining_amount"
-        )
-
-        # Validation that remaining_amount <= total_amount
+        # Ensure remaining_amount <= total_amount
         if remaining_amount > total_amount:
             raise ValidationError(
                 "Remaining amount cannot be greater than total amount"
@@ -101,7 +54,7 @@ class ContractService:
         except (ValueError, TypeError):
             raise ValidationError(
                 "Customer ID and Sales Contact ID must be valid integers"
-                )
+            )
 
         contract_data_dict = {
             'customer_id': customer_id,
@@ -112,7 +65,111 @@ class ContractService:
             'signed': signed
         }
 
-        return self.repository.update(contract_id, contract_data_dict)
+        return self.repository.create(contract_data_dict)
+
+    def update_contract(self, contract_id, contract_data, current_user):
+        require_permission(current_user, Permission.UPDATE_CONTRACT)
+
+        # Validate required fields
+        customer_id = validate_string_not_empty(contract_data["customer_id"],
+                                                "customer_id")
+
+        # Validate amounts
+        total_amount = validate_positive_amount(
+            contract_data.get("total_amount", 0.0), "total_amount"
+        )
+        remaining_amount = validate_non_negative_amount(
+            contract_data.get("remaining_amount", total_amount), "remaining_amount"
+        )
+
+        # Ensure that remaining_amount <= total_amount
+        if remaining_amount > total_amount:
+            raise ValidationError(
+                "Remaining amount cannot be greater than total amount"
+            )
+
+        # Optional fields
+        date_created = contract_data.get("date_created")
+        signed = bool(contract_data.get("signed", False))
+
+        # Relation with the sales_contact (can be modified by management)
+        if current_user['role'] in ['management', 'admin']:
+            sales_contact_id = contract_data.get("sales_contact_id", current_user['id'])
+        else:
+            sales_contact_id = current_user['id']
+
+        try:
+            customer_id = int(customer_id)
+            sales_contact_id = int(sales_contact_id)
+        except (ValueError, TypeError):
+            raise ValidationError(
+                "Customer ID and Sales Contact ID must be valid integers"
+            )
+
+        contract_data_dict = {
+            'customer_id': customer_id,
+            'sales_contact_id': sales_contact_id,
+            'total_amount': total_amount,
+            'remaining_amount': remaining_amount,
+            'date_created': date_created,
+            'signed': signed
+        }
+
+        # If the contract is marked as signed, emit a special Sentry log
+        updated_contract = self.repository.update(contract_id, contract_data_dict)
+
+        # Check if this is a signing action (changed from unsigned to signed)
+        if signed and hasattr(updated_contract, 'customer'):
+            current_user_email = getattr(current_user, 'email', 'system')
+            customer_name = getattr(updated_contract.customer,
+                                    'full_name',
+                                    'Unknown Customer')
+
+            log_contract_signature(
+                contract_id=contract_id,
+                customer_name=customer_name,
+                signed_by=current_user_email,
+                amount=float(total_amount)
+            )
+
+        return updated_contract
+
+    @capture_exceptions
+    def sign_contract(self, contract_id: int, current_user) -> Contract:
+        """
+        Specific method to sign a contract.
+        Includes special logging for business traceability.
+        """
+        require_permission(current_user, Permission.SIGN_CONTRACT)
+
+        # Retrieve the current contract
+        contract = self.repository.get_by_id(contract_id)
+        if not contract:
+            raise ValidationError(f"Contract with ID {contract_id} not found")
+
+        if contract.signed:
+            raise ValidationError(f"Contract {contract_id} is already signed")
+
+        # Mark as signed
+        contract_data = {'signed': True}
+        updated_contract = self.repository.update(contract_id, contract_data)
+
+        # Special log for the signature
+        current_user_email = getattr(current_user, 'email', 'system')
+        customer_name = (getattr(updated_contract.customer,
+                                 'full_name',
+                                 'Unknown Customer')
+                         if hasattr(updated_contract, 'customer')
+                         else 'Unknown Customer')
+
+        log_contract_signature(
+            contract_id=contract_id,
+            customer_name=customer_name,
+            signed_by=current_user_email,
+            amount=float(updated_contract.total_amount)
+        )
+
+        return updated_contract
 
     def delete_contract(self, contract_id, current_user):
         require_permission(current_user, Permission.DELETE_CONTRACT)
@@ -121,5 +178,5 @@ class ContractService:
     def list_contracts(self, current_user):
         """List contracts - all users can see all contracts (read-only access)"""
         require_permission(current_user, Permission.READ_CONTRACT)
-        # CONFORMITÉ: Tous les collaborateurs doivent pouvoir accéder à tous les contrats en lecture seule
+        # COMPLIANCE: All employees should be able to read all contracts
         return self.repository.get_all()

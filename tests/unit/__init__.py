@@ -1,4 +1,4 @@
 """
-Tests unitaires pour Epic Events CRM
-Tests isolés des composants individuels sans dépendances externes
+Unit tests for Epic Events CRM
+Isolated tests of individual components without external dependencies
 """

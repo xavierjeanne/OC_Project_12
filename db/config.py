@@ -24,6 +24,8 @@ engine = create_engine(DATABASE_URL)
 
 
 # Tester la connexion à la base de données
+
+
 def test_connection():
     try:
         from sqlalchemy import text

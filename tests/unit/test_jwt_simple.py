@@ -27,12 +27,12 @@ class TestJWTServiceSimple:
             "name": "Test User",
             "email": "test@example.com",
             "role": "admin",
-            "role_id": 4
+            "role_id": 4,
         }
 
     def test_create_access_token(self, jwt_service, sample_employee_data):
         """Test creating access token"""
-        with patch.dict(os.environ, {'EPIC_EVENTS_JWT_SECRET': 'test_secret_key'}):
+        with patch.dict(os.environ, {"EPIC_EVENTS_JWT_SECRET": "test_secret_key"}):
             token = jwt_service.create_access_token(sample_employee_data)
 
             assert isinstance(token, str)
@@ -49,7 +49,7 @@ class TestJWTServiceSimple:
 
     def test_create_refresh_token(self, jwt_service, sample_employee_data):
         """Test creating refresh token"""
-        with patch.dict(os.environ, {'EPIC_EVENTS_JWT_SECRET': 'test_secret_key'}):
+        with patch.dict(os.environ, {"EPIC_EVENTS_JWT_SECRET": "test_secret_key"}):
             token = jwt_service.create_refresh_token(sample_employee_data)
 
             assert isinstance(token, str)
@@ -64,7 +64,7 @@ class TestJWTServiceSimple:
 
     def test_verify_valid_token(self, jwt_service, sample_employee_data):
         """Test verifying valid tokens"""
-        with patch.dict(os.environ, {'EPIC_EVENTS_JWT_SECRET': 'test_secret_key'}):
+        with patch.dict(os.environ, {"EPIC_EVENTS_JWT_SECRET": "test_secret_key"}):
             access_token = jwt_service.create_access_token(sample_employee_data)
             refresh_token = jwt_service.create_refresh_token(sample_employee_data)
 
@@ -80,13 +80,13 @@ class TestJWTServiceSimple:
 
     def test_verify_invalid_token(self, jwt_service):
         """Test verifying invalid token"""
-        with patch.dict(os.environ, {'EPIC_EVENTS_JWT_SECRET': 'test_secret_key'}):
+        with patch.dict(os.environ, {"EPIC_EVENTS_JWT_SECRET": "test_secret_key"}):
             payload = jwt_service.verify_token("invalid_token", "access")
             assert payload is None
 
     def test_verify_wrong_token_type(self, jwt_service, sample_employee_data):
         """Test verifying token with wrong type"""
-        with patch.dict(os.environ, {'EPIC_EVENTS_JWT_SECRET': 'test_secret_key'}):
+        with patch.dict(os.environ, {"EPIC_EVENTS_JWT_SECRET": "test_secret_key"}):
             access_token = jwt_service.create_access_token(sample_employee_data)
 
             # Try to verify access token as refresh token
@@ -99,15 +99,15 @@ class TestJWTServiceSimple:
 
     def test_secret_key_generation(self, jwt_service):
         """Test secret key functionality"""
-        with patch.dict(os.environ, {'EPIC_EVENTS_JWT_SECRET': 'test_secret'}):
+        with patch.dict(os.environ, {"EPIC_EVENTS_JWT_SECRET": "test_secret"}):
             secret = jwt_service._get_secret_key()
-            assert secret == 'test_secret'
+            assert secret == "test_secret"
 
     def test_token_structure(self, jwt_service, sample_employee_data):
         """Test JWT token structure"""
-        with patch.dict(os.environ, {'EPIC_EVENTS_JWT_SECRET': 'test_secret_key'}):
+        with patch.dict(os.environ, {"EPIC_EVENTS_JWT_SECRET": "test_secret_key"}):
             token = jwt_service.create_access_token(sample_employee_data)
 
             # JWT should have 3 parts separated by dots
-            parts = token.split('.')
+            parts = token.split(".")
             assert len(parts) == 3

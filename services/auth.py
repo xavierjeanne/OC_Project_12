@@ -5,16 +5,18 @@ Authentication service for password hashing and user authentication
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, HashingError
 from datetime import datetime, timedelta
-from typing import Optional, Tuple
+from typing import Optional, Tuple, TYPE_CHECKING
 from models import Employee, Session
 import logging
+
+if TYPE_CHECKING:
+    pass
 
 logger = logging.getLogger(__name__)
 
 
 class AuthenticationError(Exception):
     """Custom exception for authentication errors"""
-    pass
 
 
 class AuthService:
@@ -23,11 +25,11 @@ class AuthService:
     def __init__(self):
         # Configure Argon2 parameters
         self.ph = PasswordHasher(
-            time_cost=3,        # Number of iterations
+            time_cost=3,  # Number of iterations
             memory_cost=65536,  # Memory used (64 MB)
-            parallelism=1,      # Number of parallel threads
-            hash_len=32,        # Length of the hash
-            salt_len=16         # Length of the salt
+            parallelism=1,  # Number of parallel threads
+            hash_len=32,  # Length of the hash
+            salt_len=16,  # Length of the salt
         )
         self.max_attempts = 5
         self.lockout_duration = timedelta(minutes=15)
@@ -83,7 +85,7 @@ class AuthService:
 
         return datetime.now() < employee.locked_until
 
-    def increment_failed_attempts(self, employee: Employee, session: Session) -> None:
+    def increment_failed_attempts(self, employee: Employee, session) -> None:
         """
         Increment failed login attempts and lock account if necessary
 
@@ -99,7 +101,7 @@ class AuthService:
 
         session.commit()
 
-    def reset_failed_attempts(self, employee: Employee, session: Session) -> None:
+    def reset_failed_attempts(self, employee: Employee, session) -> None:
         """
         Reset failed login attempts after successful login
 
@@ -113,10 +115,8 @@ class AuthService:
         session.commit()
 
     def authenticate_user(
-                        self,
-                        employee_number: str,
-                        password: str
-                        ) -> Tuple[bool, Optional[dict], str]:
+        self, employee_number: str, password: str
+    ) -> Tuple[bool, Optional[dict], str]:
         """
         Authenticate a user with employee number and password
 
@@ -130,12 +130,16 @@ class AuthService:
         session = Session()
         try:
             # Find employee by employee_number
-            employee = session.query(
-                Employee).filter_by(employee_number=employee_number).first()
+            employee = (
+                session.query(Employee)
+                .filter_by(employee_number=employee_number)
+                .first()
+            )
 
             if not employee:
-                logger.warning(f"Login attempt with invalid employee number:"
-                               f"{employee_number}")
+                logger.warning(
+                    "Login attempt with invalid employee number:" f"{employee_number}"
+                )
                 return False, None, "Invalid employee number"
 
             # Check if account is locked
@@ -149,8 +153,10 @@ class AuthService:
             if not self.verify_password(employee.password_hash, password):
                 self.increment_failed_attempts(employee, session)
                 attempts_left = self.max_attempts - employee.failed_login_attempts
-                logger.warning(f"Failed login attempt for {employee_number}."
-                               f"Attempts left: {attempts_left}")
+                logger.warning(
+                    f"Failed login attempt for {employee_number}."
+                    f"Attempts left: {attempts_left}"
+                )
 
                 if attempts_left <= 0:
                     return False, None, "Account locked due to too many failed attempts"
@@ -169,7 +175,7 @@ class AuthService:
                 "name": employee.name,
                 "email": employee.email,
                 "role": employee.role,  # employee.role is already the role name
-                "role_id": employee.role_id
+                "role_id": employee.role_id,
             }
 
             return True, employee_data, "Login successful"
@@ -177,11 +183,9 @@ class AuthService:
         finally:
             session.close()
 
-    def create_employee_with_password(self,
-                                      name: str,
-                                      email: str,
-                                      role_id: int,
-                                      password: str) -> dict:
+    def create_employee_with_password(
+        self, name: str, email: str, role_id: int, password: str
+    ) -> dict:
         """
         Create a new employee with hashed password
 
@@ -214,7 +218,7 @@ class AuthService:
                 password_hash=password_hash,
                 failed_login_attempts=0,
                 locked_until=None,
-                last_login=None
+                last_login=None,
             )
 
             session.add(employee)
@@ -222,11 +226,11 @@ class AuthService:
 
             # Get the data we need before closing the session
             employee_data = {
-                'id': employee.id,
-                'employee_number': employee.employee_number,
-                'name': employee.name,
-                'email': employee.email,
-                'role_id': employee.role_id
+                "id": employee.id,
+                "employee_number": employee.employee_number,
+                "name": employee.name,
+                "email": employee.email,
+                "role_id": employee.role_id,
             }
 
             logger.info(f"Created employee {employee_number} - {name}")

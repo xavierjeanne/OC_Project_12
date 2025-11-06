@@ -27,7 +27,7 @@ def create_test_employee_with_auth(employee_data, password="TestPassword123!"):
             name=employee_data["name"],
             email=employee_data["email"],
             role_id=employee_data["role_id"],
-            password=password
+            password=password,
         )
     finally:
         session.close()

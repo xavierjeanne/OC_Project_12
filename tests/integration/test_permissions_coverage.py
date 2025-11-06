@@ -1,84 +1,92 @@
 """
-Tests pour améliorer la couverture des permissions de sécurité
-Tests avec PostgreSQL pour cohérence production
+Integration tests to improve permissions system coverage
 """
 
 import pytest
 from datetime import datetime
 
-from models import Customer, Employee, Role, Contract, Event
-from repositories import (CustomerRepository,
-                          EmployeeRepository,
-                          ContractRepository,
-                          EventRepository)
+from models import Role
+from repositories import (
+    CustomerRepository,
+    EmployeeRepository,
+    ContractRepository,
+    EventRepository,
+)
 from services.auth import AuthService
 from utils.permissions import (
-    Permission, PermissionError, ROLE_PERMISSIONS,
-    has_permission, require_permission,
-    can_update_own_assigned_customer, can_update_own_assigned_contract,
-    can_update_own_assigned_event, get_role_permissions, describe_permissions
+    Permission,
+    PermissionError,
+    ROLE_PERMISSIONS,
+    has_permission,
+    require_permission,
+    can_update_own_assigned_customer,
+    can_update_own_assigned_contract,
+    can_update_own_assigned_event,
+    get_role_permissions,
+    describe_permissions,
 )
 
 
 @pytest.fixture
 def permissions_session(test_db):
-    """Session pour tests de permissions - utilise les rôles créés dans conftest.py"""
+    """Session for permissions tests - uses roles created in conftest.py"""
     yield test_db
 
 
 @pytest.fixture
 def permissions_roles(permissions_session):
-    """Récupérer les rôles créés dans conftest.py - évite DetachedInstanceError"""
+    """Retrieve roles created in conftest.py - avoids DetachedInstanceError"""
     roles_data = {}
     for role_name in ["sales", "support", "management", "admin"]:
         role = permissions_session.query(Role).filter_by(name=role_name).first()
         if role:
             roles_data[role_name] = {
-                'id': role.id,
-                'name': role.name,
-                'description': role.description
+                "id": role.id,
+                "name": role.name,
+                "description": role.description,
             }
-    
+
     # Return a dict-like object that allows accessing both id and full role
     class RoleHelper:
+
         def __init__(self, session, roles_data):
             self.session = session
             self.roles_data = roles_data
-            
+
         def __getitem__(self, key):
             if key not in self.roles_data:
                 raise KeyError(f"Role '{key}' not found")
-            
+
             # Return fresh role object from current session
-            role_id = self.roles_data[key]['id']
+            role_id = self.roles_data[key]["id"]
             return self.session.query(Role).filter(Role.id == role_id).first()
-    
+
     return RoleHelper(permissions_session, roles_data)
 
 
 @pytest.fixture
 def auth_service_permissions():
-    """Service d'authentification pour tests de permissions"""
+    """Authentication service for permissions tests"""
     return AuthService()
 
 
 @pytest.fixture
 def permissions_repos(permissions_session):
-    """Repositories pour tests de permissions"""
+    """Repositories for permissions tests"""
     return {
         "customer": CustomerRepository(permissions_session),
         "employee": EmployeeRepository(permissions_session),
         "contract": ContractRepository(permissions_session),
-        "event": EventRepository(permissions_session)
+        "event": EventRepository(permissions_session),
     }
 
 
 class TestPermissions:
-    """Tests pour améliorer la couverture du système de permissions"""
+    """Tests to improve permissions system coverage"""
 
     def test_permission_enum_values(self):
-        """Test que l'énumération Permission contient les bonnes valeurs"""
-        # Vérifier que toutes les permissions existent
+        """Test that the Permission enumeration contains the correct values"""
+        # Check that all permissions exist
         assert Permission.CREATE_CUSTOMER.value == "create_customer"
         assert Permission.READ_CUSTOMER.value == "read_customer"
         assert Permission.UPDATE_CUSTOMER.value == "update_customer"
@@ -90,201 +98,219 @@ class TestPermissions:
         assert Permission.DELETE_EMPLOYEE.value == "delete_employee"
 
     def test_role_permissions_sales(self):
-        """Test permissions du rôle sales"""
+        """Test permissions of the sales role"""
         sales_permissions = ROLE_PERMISSIONS["sales"]
 
-        # Sales peut créer/lire/modifier des clients
+        # Sales can create/read/update customers
         assert Permission.CREATE_CUSTOMER in sales_permissions
         assert Permission.READ_CUSTOMER in sales_permissions
         assert Permission.UPDATE_CUSTOMER in sales_permissions
-        # Mais pas supprimer
+        # But not delete
         assert Permission.DELETE_CUSTOMER not in sales_permissions
 
-        # Sales peut tout faire avec les contrats
+        # Sales can do anything with contracts
         assert Permission.CREATE_CONTRACT in sales_permissions
         assert Permission.READ_CONTRACT in sales_permissions
         assert Permission.UPDATE_CONTRACT in sales_permissions
         assert Permission.SIGN_CONTRACT in sales_permissions
 
     def test_role_permissions_support(self):
-        """Test permissions du rôle support"""
+        """Test permissions of the support role"""
         support_permissions = ROLE_PERMISSIONS["support"]
 
-        # Support peut seulement lire les clients
+        # Support can only read customers
         assert Permission.READ_CUSTOMER in support_permissions
         assert Permission.CREATE_CUSTOMER not in support_permissions
         assert Permission.UPDATE_CUSTOMER not in support_permissions
         assert Permission.DELETE_CUSTOMER not in support_permissions
 
-        # Support peut lire et modifier les événements
+        # Support can read and update events
         assert Permission.READ_EVENT in support_permissions
         assert Permission.UPDATE_EVENT in support_permissions
         assert Permission.CREATE_EVENT not in support_permissions
 
     def test_role_permissions_management(self):
-        """Test permissions du rôle management"""
+        """Test permissions of the management role"""
         management_permissions = ROLE_PERMISSIONS["management"]
 
-        # Management a toutes les permissions
+        # Management has all permissions
         all_permissions = list(Permission)
         for permission in all_permissions:
             assert permission in management_permissions
 
-    def test_has_permission_with_valid_employee(self,
-                                                permissions_roles,
-                                                auth_service_permissions,
-                                                permissions_repos):
-        """Test has_permission avec employé valide"""
-        # Créer un employé sales
+    def test_has_permission_with_valid_employee(
+        self, permissions_roles, auth_service_permissions, permissions_repos
+    ):
+        """Test has_permission with valid employee"""
+        # Create a sales employee
         sales_data = auth_service_permissions.create_employee_with_password(
-            name="Sales Employee", email="sales_perms@test.com",
-            role_id=permissions_roles["sales"].id, password="TestPassword123!"
+            name="Sales Employee",
+            email="sales_perms@test.com",
+            role_id=permissions_roles["sales"].id,
+            password="TestPassword123!",
         )
         sales_employee = permissions_repos["employee"].get_by_id(sales_data["id"])
 
-        # Test permissions accordées
+        # Test granted permissions
         assert has_permission(sales_employee, Permission.CREATE_CUSTOMER) is True
         assert has_permission(sales_employee, Permission.READ_CUSTOMER) is True
         assert has_permission(sales_employee, Permission.CREATE_CONTRACT) is True
 
-        # Test permissions refusées
+        # Test denied permissions
         assert has_permission(sales_employee, Permission.DELETE_CUSTOMER) is False
         assert has_permission(sales_employee, Permission.DELETE_EMPLOYEE) is False
 
     def test_has_permission_with_none_employee(self):
-        """Test has_permission avec employé None"""
+        """Test has_permission with None employee"""
         assert has_permission(None, Permission.CREATE_CUSTOMER) is False
         assert has_permission(None, Permission.READ_CUSTOMER) is False
 
     def test_has_permission_with_invalid_role(self):
-        """Test has_permission avec rôle invalide"""
-        # Créer un mock employee avec un rôle invalide
-        mock_employee = type('MockEmployee', (), {
-            'role': 'invalid_role',  # Rôle qui n'existe pas dans ROLE_PERMISSIONS
-            'name': 'Test Employee'
-        })()
+        """Test has_permission with invalid role"""
+        # Create a mock employee with an invalid role
+        mock_employee = type(
+            "MockEmployee",
+            (),
+            {
+                "role": "invalid_role",  # RRole that does not exist in ROLE_PERMISSIONS
+                "name": "Test Employee",
+            },
+        )()
 
-        # Un rôle invalide devrait retourner False
+        # An invalid role should return False
         assert has_permission(mock_employee, Permission.CREATE_CUSTOMER) is False
 
-    def test_require_permission_success(self,
-                                        permissions_roles,
-                                        auth_service_permissions,
-                                        permissions_repos):
-        """Test require_permission avec permission accordée"""
-        # Créer un employé management
+    def test_require_permission_success(
+        self, permissions_roles, auth_service_permissions, permissions_repos
+    ):
+        """Test require_permission with granted permission"""
+        # Create a management employee
         mgmt_data = auth_service_permissions.create_employee_with_password(
-            name="Management Employee", email="mgmt_perms@test.com",
-            role_id=permissions_roles["management"].id, password="TestPassword123!"
+            name="Management Employee",
+            email="mgmt_perms@test.com",
+            role_id=permissions_roles["management"].id,
+            password="TestPassword123!",
         )
         mgmt_employee = permissions_repos["employee"].get_by_id(mgmt_data["id"])
 
-        # Ne devrait pas lever d'exception
+        # Should not raise an exception
         require_permission(mgmt_employee, Permission.DELETE_CUSTOMER)
         require_permission(mgmt_employee, Permission.CREATE_EMPLOYEE)
 
     def test_require_permission_failure_none_employee(self):
-        """Test require_permission avec employé None"""
+        """Test require_permission with None employee"""
         with pytest.raises(PermissionError, match="Authentication required"):
             require_permission(None, Permission.CREATE_CUSTOMER)
 
-    def test_require_permission_insufficient_permission(self,
-                                                        permissions_roles,
-                                                        auth_service_permissions,
-                                                        permissions_repos):
-        """Test require_permission avec permission insuffisante"""
-        # Créer un employé support
+    def test_require_permission_insufficient_permission(
+        self, permissions_roles, auth_service_permissions, permissions_repos
+    ):
+        """Test require_permission with insufficient permission"""
+        # Create a support employee
         support_data = auth_service_permissions.create_employee_with_password(
-            name="Support Employee", email="support_perms@test.com",
-            role_id=permissions_roles["support"].id, password="TestPassword123!"
+            name="Support Employee",
+            email="support_perms@test.com",
+            role_id=permissions_roles["support"].id,
+            password="TestPassword123!",
         )
         support_employee = permissions_repos["employee"].get_by_id(support_data["id"])
 
-        # Devrait lever une exception
+        # Should raise an exception
         with pytest.raises(PermissionError, match="does not have permission"):
             require_permission(support_employee, Permission.DELETE_CUSTOMER)
 
-    def test_can_update_own_assigned_customer_success(self,
-                                                      permissions_roles,
-                                                      auth_service_permissions,
-                                                      permissions_repos):
-        """Test can_update_own_assigned_customer avec client assigné"""
-        # Créer employé sales
+    def test_can_update_own_assigned_customer_success(
+        self, permissions_roles, auth_service_permissions, permissions_repos
+    ):
+        """Test can_update_own_assigned_customer with assigned customer"""
+        # Create sales employee
         sales_data = auth_service_permissions.create_employee_with_password(
-            name="Sales Assigned", email="sales_assigned@test.com",
-            role_id=permissions_roles["sales"].id, password="TestPassword123!"
+            name="Sales Assigned",
+            email="sales_assigned@test.com",
+            role_id=permissions_roles["sales"].id,
+            password="TestPassword123!",
         )
         sales_employee = permissions_repos["employee"].get_by_id(sales_data["id"])
 
-        # Créer client assigné à cet employé
-        customer = permissions_repos["customer"].create({
-            "full_name": "Assigned Customer",
-            "email": "assigned@test.com",
-            "phone": "0123456789",
-            "sales_contact_id": sales_employee.id
-        })
+        # Create assigned customer for this employee
+        customer = permissions_repos["customer"].create(
+            {
+                "full_name": "Assigned Customer",
+                "email": "assigned@test.com",
+                "phone": "0123456789",
+                "sales_contact_id": sales_employee.id,
+            }
+        )
 
-        # Sales peut modifier son client assigné
+        # Sales can update their assigned customer
         assert can_update_own_assigned_customer(sales_employee, customer) is True
 
-    def test_can_update_own_assigned_customer_failure(self,
-                                                      permissions_roles,
-                                                      auth_service_permissions,
-                                                      permissions_repos):
-        """Test can_update_own_assigned_customer avec client non assigné"""
-        # Créer deux employés sales
+    def test_can_update_own_assigned_customer_failure(
+        self, permissions_roles, auth_service_permissions, permissions_repos
+    ):
+        """Test can_update_own_assigned_customer with unassigned customer"""
+        # Create two sales employees
         sales1_data = auth_service_permissions.create_employee_with_password(
-            name="Sales 1", email="sales1_assigned@test.com",
-            role_id=permissions_roles["sales"].id, password="TestPassword123!"
+            name="Sales 1",
+            email="sales1_assigned@test.com",
+            role_id=permissions_roles["sales"].id,
+            password="TestPassword123!",
         )
         sales2_data = auth_service_permissions.create_employee_with_password(
-            name="Sales 2", email="sales2_assigned@test.com",
-            role_id=permissions_roles["sales"].id, password="TestPassword123!"
+            name="Sales 2",
+            email="sales2_assigned@test.com",
+            role_id=permissions_roles["sales"].id,
+            password="TestPassword123!",
         )
 
         sales1_employee = permissions_repos["employee"].get_by_id(sales1_data["id"])
         sales2_employee = permissions_repos["employee"].get_by_id(sales2_data["id"])
 
-        # Créer client assigné à sales1
-        customer = permissions_repos["customer"].create({
-            "full_name": "Other Customer",
-            "email": "other@test.com",
-            "phone": "0123456789",
-            "sales_contact_id": sales1_employee.id
-        })
+        # Create assigned customer for sales1
+        customer = permissions_repos["customer"].create(
+            {
+                "full_name": "Other Customer",
+                "email": "other@test.com",
+                "phone": "0123456789",
+                "sales_contact_id": sales1_employee.id,
+            }
+        )
 
-        # Sales2 ne peut pas modifier le client de sales1
+        # Sales2 cannot update sales1's customer
         assert can_update_own_assigned_customer(sales2_employee, customer) is False
 
-    def test_can_update_own_assigned_customer_management(self,
-                                                         permissions_roles,
-                                                         auth_service_permissions,
-                                                         permissions_repos):
-        """Test can_update_own_assigned_customer avec rôle management"""
-        # Créer employé management
+    def test_can_update_own_assigned_customer_management(
+        self, permissions_roles, auth_service_permissions, permissions_repos
+    ):
+        """Test can_update_own_assigned_customer with management role"""
+        # Create management employee
         mgmt_data = auth_service_permissions.create_employee_with_password(
-            name="Manager", email="manager_assigned@test.com",
-            role_id=permissions_roles["management"].id, password="TestPassword123!"
+            name="Manager",
+            email="manager_assigned@test.com",
+            role_id=permissions_roles["management"].id,
+            password="TestPassword123!",
         )
         manager = permissions_repos["employee"].get_by_id(mgmt_data["id"])
 
-        # Créer client quelconque
-        customer = permissions_repos["customer"].create({
-            "full_name": "Any Customer",
-            "email": "any@test.com",
-            "phone": "0123456789"
-        })
+        # Create any customer
+        customer = permissions_repos["customer"].create(
+            {
+                "full_name": "Any Customer",
+                "email": "any@test.com",
+                "phone": "0123456789",
+            }
+        )
 
-        # Management peut modifier n'importe quel client
+        # Management can update any customer
         assert can_update_own_assigned_customer(manager, customer) is True
 
     def test_can_update_with_none_parameters(self):
-        """Test méthodes can_update avec paramètres None"""
+        """Test can_update methods with None parameters"""
         assert can_update_own_assigned_customer(None, None) is False
         assert can_update_own_assigned_customer(None, "fake_customer") is False
 
     def test_permission_error_exception(self):
-        """Test que PermissionError est une exception valide"""
+        """Test PermissionError exception"""
         with pytest.raises(PermissionError):
             raise PermissionError("Test error message")
 
@@ -319,99 +345,114 @@ class TestPermissions:
         assert isinstance(management_desc, str)
         assert "management" in management_desc.lower()
 
-        # Test rôle invalide
+        # Invalid role
         invalid_desc = describe_permissions("invalid_role")
-        assert ("No permissions"
-                in invalid_desc or "Unknown role"
-                in invalid_desc or "Invalid role"
-                in invalid_desc)
+        assert (
+            "No permissions" in invalid_desc
+            or "Unknown role" in invalid_desc
+            or "Invalid role" in invalid_desc
+        )
 
-    def test_can_update_own_assigned_contract(self,
-                                              permissions_roles,
-                                              auth_service_permissions,
-                                              permissions_repos):
+    def test_can_update_own_assigned_contract(
+        self, permissions_roles, auth_service_permissions, permissions_repos
+    ):
         """Test can_update_own_assigned_contract method"""
-        # Créer employé sales
+        # Create sales employee
         sales_data = auth_service_permissions.create_employee_with_password(
-            name="Sales Contract", email="sales_contract@test.com",
-            role_id=permissions_roles["sales"].id, password="TestPassword123!"
+            name="Sales Contract",
+            email="sales_contract@test.com",
+            role_id=permissions_roles["sales"].id,
+            password="TestPassword123!",
         )
         sales_employee = permissions_repos["employee"].get_by_id(sales_data["id"])
 
-        # Créer client et contrat
-        customer = permissions_repos["customer"].create({
-            "full_name": "Contract Customer",
-            "email": "contract_customer@test.com",
-            "phone": "0123456789"
-        })
+        # Create customer and contract
+        customer = permissions_repos["customer"].create(
+            {
+                "full_name": "Contract Customer",
+                "email": "contract_customer@test.com",
+                "phone": "0123456789",
+            }
+        )
 
-        contract = permissions_repos["contract"].create({
-            "customer_id": customer.id,
-            "sales_contact_id": sales_employee.id,
-            "total_amount": 5000.0,
-            "remaining_amount": 2500.0,
-            "date_created": datetime.now(),
-            "signed": False
-        })
+        contract = permissions_repos["contract"].create(
+            {
+                "customer_id": customer.id,
+                "sales_contact_id": sales_employee.id,
+                "total_amount": 5000.0,
+                "remaining_amount": 2500.0,
+                "date_created": datetime.now(),
+                "signed": False,
+            }
+        )
 
-        # Sales peut modifier son propre contrat
+        # Sales can update their own contract
         assert can_update_own_assigned_contract(sales_employee, contract) is True
 
-        # Test avec None
+        # Test with None
         assert can_update_own_assigned_contract(None, contract) is False
         assert can_update_own_assigned_contract(sales_employee, None) is False
 
-    def test_can_update_own_assigned_event(self,
-                                           permissions_roles,
-                                           auth_service_permissions,
-                                           permissions_repos):
+    def test_can_update_own_assigned_event(
+        self, permissions_roles, auth_service_permissions, permissions_repos
+    ):
         """Test can_update_own_assigned_event method"""
-        # Créer employés
+        # Create employees
         sales_data = auth_service_permissions.create_employee_with_password(
-            name="Sales Event Test", email="sales_event_test@test.com",
-            role_id=permissions_roles["sales"].id, password="TestPassword123!"
+            name="Sales Event Test",
+            email="sales_event_test@test.com",
+            role_id=permissions_roles["sales"].id,
+            password="TestPassword123!",
         )
         support_data = auth_service_permissions.create_employee_with_password(
-            name="Support Event Test", email="support_event_test@test.com",
-            role_id=permissions_roles["support"].id, password="TestPassword123!"
+            name="Support Event Test",
+            email="support_event_test@test.com",
+            role_id=permissions_roles["support"].id,
+            password="TestPassword123!",
         )
 
         sales_employee = permissions_repos["employee"].get_by_id(sales_data["id"])
         support_employee = permissions_repos["employee"].get_by_id(support_data["id"])
 
-        # Créer client, contrat et événement
-        customer = permissions_repos["customer"].create({
-            "full_name": "Event Customer",
-            "email": "event_customer@test.com",
-            "phone": "0123456789"
-        })
+        # Create customer, contract and event
+        customer = permissions_repos["customer"].create(
+            {
+                "full_name": "Event Customer",
+                "email": "event_customer@test.com",
+                "phone": "0123456789",
+            }
+        )
 
-        contract = permissions_repos["contract"].create({
-            "customer_id": customer.id,
-            "sales_contact_id": sales_employee.id,
-            "total_amount": 3000.0,
-            "remaining_amount": 1500.0,
-            "date_created": datetime.now(),
-            "signed": True
-        })
+        contract = permissions_repos["contract"].create(
+            {
+                "customer_id": customer.id,
+                "sales_contact_id": sales_employee.id,
+                "total_amount": 3000.0,
+                "remaining_amount": 1500.0,
+                "date_created": datetime.now(),
+                "signed": True,
+            }
+        )
 
-        event = permissions_repos["event"].create({
-            "contract_id": contract.id,
-            "customer_id": customer.id,
-            "support_contact_id": support_employee.id,
-            "name": "Test Event Permission",
-            "date_start": datetime.now(),
-            "date_end": datetime.now(),
-            "location": "Test Location",
-            "attendees": 50,
-            "notes": "Permission test"
-        })
+        event = permissions_repos["event"].create(
+            {
+                "contract_id": contract.id,
+                "customer_id": customer.id,
+                "support_contact_id": support_employee.id,
+                "name": "Test Event Permission",
+                "date_start": datetime.now(),
+                "date_end": datetime.now(),
+                "location": "Test Location",
+                "attendees": 50,
+                "notes": "Permission test",
+            }
+        )
 
-        # Support peut modifier son événement assigné
+        # Support can update their assigned event
         assert can_update_own_assigned_event(support_employee, event) is True
 
-        # Sales ne peut pas modifier l'événement assigné au support
+        # Sales cannot update the event assigned to support
         assert can_update_own_assigned_event(sales_employee, event) is False
 
-        # Test avec None
+        # Test with None
         assert can_update_own_assigned_event(None, event) is False

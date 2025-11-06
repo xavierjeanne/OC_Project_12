@@ -14,6 +14,12 @@ from models.event import Event
 
 # Make all models available at package level
 __all__ = [
-    'Base', 'Session', 'init_db',
-    'Role', 'Employee', 'Customer', 'Contract', 'Event'
+    "Base",
+    "Session",
+    "init_db",
+    "Role",
+    "Employee",
+    "Customer",
+    "Contract",
+    "Event",
 ]

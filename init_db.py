@@ -23,14 +23,16 @@ def create_base_roles():
 
         # Create the 3 base roles
         roles = [
-            Role(name="sales",
-                 description="Sales team - Customer and contract management"),
-            Role(name="support",
-                 description="Support team - Event management and customer service"),
-            Role(name="management",
-                 description="Management - Full system access"),
-            Role(name="admin",
-                 description="System administrator - Full system access")
+            Role(
+                name="sales",
+                description="Sales team - Customer and contract management",
+            ),
+            Role(
+                name="support",
+                description="Support team - Event management and customer service",
+            ),
+            Role(name="management", description="Management - Full system access"),
+            Role(name="admin", description="System administrator - Full system access"),
         ]
 
         for role in roles:
@@ -51,21 +53,25 @@ def create_base_roles():
 
 def create_admin_user():
     """Create the first admin user interactively"""
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("CREATE FIRST ADMIN USER")
-    print("="*50)
+    print("=" * 50)
 
     session = Session()
     try:
         # Check if admin role exists
-        admin_role = session.query(Role).filter_by(name='admin').first()
+        admin_role = session.query(Role).filter_by(name="admin").first()
         if not admin_role:
             print("ERROR: Admin role not found")
             return False
 
         # Check if admin already exists
-        existing_admin = session.query(Role).join(Role.employees).filter(
-            Role.name == 'admin').first()
+        existing_admin = (
+            session.query(Role)
+            .join(Role.employees)
+            .filter(Role.name == "admin")
+            .first()
+        )
         if existing_admin:
             print("Admin user already exists. Skipping creation...")
             return True
@@ -104,10 +110,7 @@ def create_admin_user():
         # Create admin
         try:
             admin_employee = auth_service.create_employee_with_password(
-                name=name,
-                email=email,
-                role_id=admin_role.id,
-                password=password
+                name=name, email=email, role_id=admin_role.id, password=password
             )
 
             print("\nAdmin created successfully!")
@@ -137,8 +140,9 @@ def create_database():
     try:
         # Delete all data in correct order
         from models import Employee, Customer, Contract, Event
+
         session.query(Event).delete()
-        session.query(Contract).delete() 
+        session.query(Contract).delete()
         session.query(Customer).delete()
         session.query(Employee).delete()
         session.query(Role).delete()
@@ -164,11 +168,12 @@ def main():
 
     # Check for --force flag
     import sys
+
     force_mode = "--force" in sys.argv
-    
+
     if not force_mode:
         response = input("Do you want to create the database? (y/N): ")
-        if response.lower() != 'y':
+        if response.lower() != "y":
             print("Database initialization cancelled")
             return False
     else:
@@ -180,9 +185,9 @@ def main():
         success = create_admin_user()
 
         if success:
-            print("\n" + "="*50)
+            print("\n" + "=" * 50)
             print("DATABASE INITIALIZATION COMPLETE")
-            print("="*50)
+            print("=" * 50)
         else:
             print("\nWarning: Database created but admin user creation failed")
 

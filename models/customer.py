@@ -29,6 +29,5 @@ class Customer(Base):
     )
 
     def __repr__(self):
-        message = (f"id={self.id}, name='{self.full_name}',"
-                   f" email='{self.email}'")
+        message = f"id={self.id}, name='{self.full_name}'," f" email='{self.email}'"
         return f"<Customer({message})>"

@@ -6,7 +6,6 @@ Generic CRUD operations for all entities
 import logging
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
-from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -68,8 +67,9 @@ class BaseRepository(Generic[T]):
             Entity if found, None otherwise
         """
         try:
-            entity = self.db.query(self.model).filter(
-                self.model.id == entity_id).first()
+            entity = (
+                self.db.query(self.model).filter(self.model.id == entity_id).first()
+            )
             if entity:
                 logger.debug(f"Retrieved {self.model.__name__} with ID {entity_id}")
             else:
@@ -117,8 +117,9 @@ class BaseRepository(Generic[T]):
         try:
             entity = self.get_by_id(entity_id)
             if not entity:
-                logger.warning(f"{self.model.__name__} with ID {entity_id}"
-                               f"not found for update")
+                logger.warning(
+                    f"{self.model.__name__} with ID {entity_id}" "not found for update"
+                )
                 return None
             for key, value in data.items():
                 if hasattr(entity, key):
@@ -146,8 +147,10 @@ class BaseRepository(Generic[T]):
         try:
             entity = self.get_by_id(entity_id)
             if not entity:
-                logger.warning(f"{self.model.__name__} with ID {entity_id}"
-                               f" not found for deletion")
+                logger.warning(
+                    f"{self.model.__name__} with ID {entity_id}"
+                    " not found for deletion"
+                )
                 return False
             self.db.delete(entity)
             self.db.commit()
@@ -189,48 +192,11 @@ class BaseRepository(Generic[T]):
         """
         try:
             exists = (
-                self.db.query(self.model.id)
-                .filter(self.model.id == entity_id)
-                .first()
+                self.db.query(self.model.id).filter(self.model.id == entity_id).first()
                 is not None
             )
             logger.debug(f"{self.model.__name__} with ID {entity_id} exists: {exists}")
             return exists
         except SQLAlchemyError as e:
             logger.error(f"Error checking existence of {self.model.__name__}: {e}")
-            raise
-
-    def count(self) -> int:
-        """
-        Count total number of entities
-        Returns:
-            Total count
-        """
-        try:
-            count = self.db.query(func.count(self.model.id)).scalar()
-            logger.debug(f"Total {self.model.__name__} count: {count}")
-            return count
-        except SQLAlchemyError as e:
-            logger.error(f"Error counting {self.model.__name__}: {e}")
-            raise
-
-    def find_one_by(self, **kwargs) -> Optional[T]:
-        """
-        Find a single entity by specific criteria
-        Args:
-            **kwargs: Filter criteria as keyword arguments
-        Returns:
-            Entity if found, None otherwise
-        Example:
-            repository.find_one_by(email="user@example.com")
-        """
-        try:
-            entity = self.db.query(self.model).filter_by(**kwargs).first()
-            if entity:
-                logger.debug(f"Found {self.model.__name__} matching {kwargs}")
-            else:
-                logger.debug(f"No {self.model.__name__} found matching {kwargs}")
-            return entity
-        except SQLAlchemyError as e:
-            logger.error(f"Error finding {self.model.__name__}: {e}")
             raise

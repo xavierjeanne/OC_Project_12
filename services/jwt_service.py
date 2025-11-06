@@ -28,32 +28,33 @@ class JWTService:
             Secret key for JWT signing
         """
         # Try to get from environment first
-        secret = os.getenv('EPIC_EVENTS_JWT_SECRET')
+        secret = os.getenv("EPIC_EVENTS_JWT_SECRET")
 
         if not secret:
             # Generate a new secret and save it to .env file
             import secrets
+
             secret = secrets.token_urlsafe(32)
 
             # Create/update .env file
-            env_file = Path('.env')
+            env_file = Path(".env")
             env_content = ""
 
             if env_file.exists():
                 env_content = env_file.read_text()
 
             # Add or update the secret
-            if 'EPIC_EVENTS_JWT_SECRET=' in env_content:
-                lines = env_content.split('\n')
+            if "EPIC_EVENTS_JWT_SECRET=" in env_content:
+                lines = env_content.split("\n")
                 for i, line in enumerate(lines):
-                    if line.startswith('EPIC_EVENTS_JWT_SECRET='):
-                        lines[i] = f'EPIC_EVENTS_JWT_SECRET={secret}'
+                    if line.startswith("EPIC_EVENTS_JWT_SECRET="):
+                        lines[i] = f"EPIC_EVENTS_JWT_SECRET={secret}"
                         break
-                env_content = '\n'.join(lines)
+                env_content = "\n".join(lines)
             else:
-                if env_content and not env_content.endswith('\n'):
-                    env_content += '\n'
-                env_content += f'EPIC_EVENTS_JWT_SECRET={secret}\n'
+                if env_content and not env_content.endswith("\n"):
+                    env_content += "\n"
+                env_content += f"EPIC_EVENTS_JWT_SECRET={secret}\n"
 
             env_file.write_text(env_content)
             print("New JWT secret generated and saved to .env file")
@@ -81,7 +82,7 @@ class JWTService:
             "role_id": employee_data["role_id"],
             "exp": expire,
             "iat": datetime.now(UTC),  # Issued at
-            "type": "access"
+            "type": "access",
         }
 
         secret = self._get_secret_key()
@@ -104,15 +105,15 @@ class JWTService:
             "employee_number": employee_data["employee_number"],
             "exp": expire,
             "iat": datetime.now(UTC),
-            "type": "refresh"
+            "type": "refresh",
         }
 
         secret = self._get_secret_key()
         return jwt.encode(payload, secret, algorithm=self.algorithm)
 
-    def verify_token(self,
-                     token: str,
-                     token_type: str = "access") -> Optional[Dict[str, Any]]:
+    def verify_token(
+        self, token: str, token_type: str = "access"
+    ) -> Optional[Dict[str, Any]]:
         """
         Verify and decode a JWT token
 
@@ -156,11 +157,14 @@ class JWTService:
 
         # Get employee from database to create new access token
         from models import Session
+
         session = Session()
         try:
-            employee = session.query(Employee).filter_by(
-                employee_number=payload["employee_number"]
-            ).first()
+            employee = (
+                session.query(Employee)
+                .filter_by(employee_number=payload["employee_number"])
+                .first()
+            )
 
             if employee:
                 # Extract data within session
@@ -170,7 +174,7 @@ class JWTService:
                     "name": employee.name,
                     "email": employee.email,
                     "role": employee.role,  # employee.role is already the role name
-                    "role_id": employee.role_id
+                    "role_id": employee.role_id,
                 }
                 return self.create_access_token(employee_data)
             return None

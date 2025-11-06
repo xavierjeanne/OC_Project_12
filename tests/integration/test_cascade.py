@@ -8,9 +8,13 @@ from datetime import datetime
 
 import pytest
 
-from models import Contract, Customer, Employee, Event, Role
-from repositories import (ContractRepository, CustomerRepository,
-                          EmployeeRepository, EventRepository)
+from models import Role
+from repositories import (
+    ContractRepository,
+    CustomerRepository,
+    EmployeeRepository,
+    EventRepository,
+)
 from services.auth import AuthService
 
 
@@ -28,25 +32,26 @@ def roles_setup(cascade_session):
         role = cascade_session.query(Role).filter_by(name=role_name).first()
         if role:
             roles_data[role_name] = {
-                'id': role.id,
-                'name': role.name,
-                'description': role.description
+                "id": role.id,
+                "name": role.name,
+                "description": role.description,
             }
-    
+
     # Return a dict-like object that allows accessing both id and full role
     class RoleHelper:
+
         def __init__(self, session, roles_data):
             self.session = session
             self.roles_data = roles_data
-            
+
         def __getitem__(self, key):
             if key not in self.roles_data:
                 raise KeyError(f"Role '{key}' not found")
-            
+
             # Return fresh role object from current session
-            role_id = self.roles_data[key]['id']
+            role_id = self.roles_data[key]["id"]
             return self.session.query(Role).filter(Role.id == role_id).first()
-    
+
     return RoleHelper(cascade_session, roles_data)
 
 
@@ -68,16 +73,12 @@ def auth_service():
     return AuthService()
 
 
-def create_test_employee_with_auth(auth_service,
-                                   name, email,
-                                   role_id,
-                                   password="TestPassword123!"):
+def create_test_employee_with_auth(
+    auth_service, name, email, role_id, password="TestPassword123!"
+):
     """Helper to create employee with authentication"""
     return auth_service.create_employee_with_password(
-        name=name,
-        email=email,
-        role_id=role_id,
-        password=password
+        name=name, email=email, role_id=role_id, password=password
     )
 
 
@@ -100,7 +101,7 @@ def test_cascade_delete_customer_deletes_contracts_and_events(
     contract_repo,
     event_repo,
     roles_setup,
-    auth_service
+    auth_service,
 ):
     """
     Test that deleting a Customer also deletes its Contracts and Events
@@ -153,20 +154,20 @@ def test_cascade_delete_customer_deletes_contracts_and_events(
     )
 
     # Check that everything exists
-    assert customer_repo.count() == 1
-    assert contract_repo.count() == 1
-    assert event_repo.count() == 1
-    print("✅ Before deletion: 1 Customer, 1 Contract, 1 Event")
+    assert len(customer_repo.get_all()) == 1
+    assert len(contract_repo.get_all()) == 1
+    assert len(event_repo.get_all()) == 1
+    print("Before deletion: 1 Customer, 1 Contract, 1 Event")
 
     # Delete the customer
     customer_repo.delete(customer.id)
     cascade_session.commit()
 
     # Check that the customer, contract AND event have been deleted (CASCADE)
-    assert customer_repo.count() == 0
-    assert contract_repo.count() == 0
-    assert event_repo.count() == 0
-    print("✅ After deletion Customer: 0 Customer, 0 Contract, 0 Event (CASCADE OK)")
+    assert len(customer_repo.get_all()) == 0
+    assert len(contract_repo.get_all()) == 0
+    assert len(event_repo.get_all()) == 0
+    print("After deletion Customer: 0 Customer, 0 Contract, 0 Event (CASCADE OK)")
 
 
 def test_cascade_delete_contract_deletes_events(
@@ -176,7 +177,7 @@ def test_cascade_delete_contract_deletes_events(
     contract_repo,
     event_repo,
     roles_setup,
-    auth_service
+    auth_service,
 ):
     """
     Test that deleting a Contract also deletes its Events
@@ -227,18 +228,18 @@ def test_cascade_delete_contract_deletes_events(
     )
 
     # Check
-    assert contract_repo.count() == 1
-    assert event_repo.count() == 1
-    print("✅ Before deletion: 1 Contract, 1 Event")
+    assert len(contract_repo.get_all()) == 1
+    assert len(event_repo.get_all()) == 1
+    print("Before deletion: 1 Contract, 1 Event")
 
     # Delete the contract
     contract_repo.delete(contract.id)
     cascade_session.commit()
 
     # Check that the event has also been deleted (CASCADE)
-    assert contract_repo.count() == 0
-    assert event_repo.count() == 0
-    print("✅ After deletion Contract: 0 Contract, 0 Event (CASCADE OK)")
+    assert len(contract_repo.get_all()) == 0
+    assert len(event_repo.get_all()) == 0
+    print("After deletion Contract: 0 Contract, 0 Event (CASCADE OK)")
 
 
 def test_delete_employee_sets_null_on_foreign_keys(
@@ -248,7 +249,7 @@ def test_delete_employee_sets_null_on_foreign_keys(
     contract_repo,
     event_repo,
     roles_setup,
-    auth_service
+    auth_service,
 ):
     """
     Test that deleting an Employee sets to NULL the foreign keys
@@ -318,9 +319,9 @@ def test_delete_employee_sets_null_on_foreign_keys(
     cascade_session.commit()
 
     # Check that entities still exist but with FK set to NULL
-    assert customer_repo.count() == 1, "Customer should still exist"
-    assert contract_repo.count() == 1, "Contract should still exist"
-    assert event_repo.count() == 1, "Event should still exist"
+    assert len(customer_repo.get_all()) == 1, "Customer should still exist"
+    assert len(contract_repo.get_all()) == 1, "Contract should still exist"
+    assert len(event_repo.get_all()) == 1, "Event should still exist"
 
     # Refresh to get updated values
     cascade_session.refresh(customer)
@@ -329,7 +330,7 @@ def test_delete_employee_sets_null_on_foreign_keys(
     assert customer.sales_contact_id is None, "Customer.sales_contact_id should be NULL"
     assert contract.sales_contact_id is None, "Contract.sales_contact_id should be NULL"
     print(
-        "✅ After deletion Sales:"
+        "After deletion Sales:"
         "Customer and Contract exist with FK = NULL (SET NULL OK)"
     )
 
@@ -338,10 +339,10 @@ def test_delete_employee_sets_null_on_foreign_keys(
     cascade_session.commit()
 
     # Check event still exists with NULL FK
-    assert event_repo.count() == 1, "Event should still exist"
+    assert len(event_repo.get_all()) == 1, "Event should still exist"
     cascade_session.refresh(event)
     assert event.support_contact_id is None, "Event.support_contact_id should be NULL"
-    print("✅ After deletion Support: Event exists with FK = NULL (SET NULL OK)")
+    print("After deletion Support: Event exists with FK = NULL (SET NULL OK)")
 
 
 def test_employee_deletion_preserves_related_entities(
@@ -367,21 +368,20 @@ def test_employee_deletion_preserves_related_entities(
         }
     )
 
-    assert customer_repo.count() == 1
+    assert len(customer_repo.get_all()) == 1
     assert customer.sales_contact_id == employee.id
-    print("✅ Before deletion: 1 Employee, 1 Customer linked")
+    print("Before deletion: 1 Employee, 1 Customer linked")
 
     # Delete the employee
     employee_repo.delete(employee.id)
     cascade_session.commit()
 
     # Check that the Customer still exists
-    assert employee_repo.count() == 0, "Employee should be deleted"
-    assert customer_repo.count() == 1, "Customer should still exist"
+    assert len(employee_repo.get_all()) == 0, "Employee should be deleted"
+    assert len(customer_repo.get_all()) == 1, "Customer should still exist"
 
     cascade_session.refresh(customer)
     assert customer.sales_contact_id is None, "Foreign key should be NULL"
     print(
-        "✅ After deletion Employee: Customer"
-        " exists with FK = NULL (Correct behavior)"
+        "After deletion Employee: Customer" " exists with FK = NULL (Correct behavior)"
     )

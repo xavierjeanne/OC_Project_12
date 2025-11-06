@@ -1,11 +1,15 @@
-from models import Event
 from repositories.event import EventRepository
 from utils.permissions import Permission, require_permission
-from utils.validators import (validate_string_not_empty, validate_date,
-                              validate_non_negative_integer, ValidationError)
+from utils.validators import (
+    validate_string_not_empty,
+    validate_date,
+    validate_non_negative_integer,
+    ValidationError,
+)
 
 
 class EventService:
+
     def __init__(self, event_repository: EventRepository):
         self.repository = event_repository
 
@@ -42,12 +46,12 @@ class EventService:
             raise ValidationError("End date cannot be before start date")
 
         # Relation with the support_contact
-        if current_user['role'] in ['management', 'admin']:
+        if current_user["role"] in ["management", "admin"]:
             support_contact_id = event_data.get(
-                "support_contact_id", current_user['id']
-                )
+                "support_contact_id", current_user["id"]
+            )
         else:
-            support_contact_id = current_user['id']
+            support_contact_id = current_user["id"]
 
         # Validation IDs
         try:
@@ -59,15 +63,15 @@ class EventService:
             raise ValidationError("All ID fields must be valid integers")
 
         event_data_dict = {
-            'name': name,
-            'customer_id': customer_id,
-            'contract_id': contract_id,
-            'support_contact_id': support_contact_id,
-            'location': location,
-            'attendees': attendees,
-            'date_start': date_start,
-            'date_end': date_end,
-            'notes': notes
+            "name": name,
+            "customer_id": customer_id,
+            "contract_id": contract_id,
+            "support_contact_id": support_contact_id,
+            "location": location,
+            "attendees": attendees,
+            "date_start": date_start,
+            "date_end": date_end,
+            "notes": notes,
         }
 
         return self.repository.create(event_data_dict)
@@ -102,12 +106,12 @@ class EventService:
             raise ValidationError("End date cannot be before start date")
 
         # Relation with the support_contact
-        if current_user['role'] in ['management', 'admin']:
-            support_contact_id = (
-                event_data.get("support_contact_id", current_user['id'])
-                )
+        if current_user["role"] in ["management", "admin"]:
+            support_contact_id = event_data.get(
+                "support_contact_id", current_user["id"]
+            )
         else:
-            support_contact_id = current_user['id']
+            support_contact_id = current_user["id"]
 
         # Validation IDs
         try:
@@ -119,15 +123,15 @@ class EventService:
             raise ValidationError("All ID fields must be valid integers")
 
         event_data_dict = {
-            'name': name,
-            'customer_id': customer_id,
-            'contract_id': contract_id,
-            'support_contact_id': support_contact_id,
-            'location': location,
-            'attendees': attendees,
-            'date_start': date_start,
-            'date_end': date_end,
-            'notes': notes
+            "name": name,
+            "customer_id": customer_id,
+            "contract_id": contract_id,
+            "support_contact_id": support_contact_id,
+            "location": location,
+            "attendees": attendees,
+            "date_start": date_start,
+            "date_end": date_end,
+            "notes": notes,
         }
 
         return self.repository.update(event_id, event_data_dict)
@@ -137,7 +141,12 @@ class EventService:
         return self.repository.delete(event_id)
 
     def list_events(self, current_user):
-        """List events - all users can see all events (read-only access)"""
+        """List events based on user role and permissions"""
         require_permission(current_user, Permission.READ_EVENT)
-        # CONFORMITÉ: Tous les collaborateurs doivent pouvoir accéder à tous les événements en lecture seule
-        return self.repository.get_all()
+
+        if current_user["role"] == "support":
+            # Support team sees only their assigned events
+            return self.repository.find_by_support_contact(current_user["id"])
+        else:
+            # Management, sales, admin see all events
+            return self.repository.get_all()

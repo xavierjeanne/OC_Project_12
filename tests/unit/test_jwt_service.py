@@ -28,31 +28,32 @@ class TestJWTService:
             "name": "Test User",
             "email": "test@example.com",
             "role": "admin",
-            "role_id": 4
+            "role_id": 4,
         }
 
     @pytest.fixture
     def mock_env_secret(self):
         """Mock environment secret"""
-        with patch.dict(os.environ, {'EPIC_EVENTS_JWT_SECRET': 'test_secret_key'}):
+        with patch.dict(os.environ, {"EPIC_EVENTS_JWT_SECRET": "test_secret_key"}):
             yield
 
     def test_get_secret_key_from_env(self, jwt_service, mock_env_secret):
         """Test getting secret key from environment"""
         secret = jwt_service._get_secret_key()
-        assert secret == 'test_secret_key'
+        assert secret == "test_secret_key"
 
     def test_get_secret_key_generate_new(self, jwt_service):
         """Test generating new secret key when not in env"""
         with patch.dict(os.environ, {}, clear=True):
-            with patch('pathlib.Path.exists', return_value=False):
-                with patch('pathlib.Path.write_text') as mock_write:
+            with patch("pathlib.Path.exists", return_value=False):
+                with patch("pathlib.Path.write_text") as mock_write:
                     secret = jwt_service._get_secret_key()
                     assert len(secret) > 20  # Generated secret should be long
                     mock_write.assert_called_once()
 
-    def test_create_access_token(self, jwt_service, sample_employee_data,
-                                 mock_env_secret):
+    def test_create_access_token(
+        self, jwt_service, sample_employee_data, mock_env_secret
+    ):
         """Test creating access token"""
         token = jwt_service.create_access_token(sample_employee_data)
 
@@ -73,8 +74,9 @@ class TestJWTService:
         assert "exp" in payload
         assert "iat" in payload
 
-    def test_create_refresh_token(self, jwt_service, sample_employee_data,
-                                  mock_env_secret):
+    def test_create_refresh_token(
+        self, jwt_service, sample_employee_data, mock_env_secret
+    ):
         """Test creating refresh token"""
         token = jwt_service.create_refresh_token(sample_employee_data)
 
@@ -95,8 +97,9 @@ class TestJWTService:
         assert "email" not in payload
         assert "role" not in payload
 
-    def test_verify_valid_access_token(self, jwt_service, sample_employee_data,
-                                       mock_env_secret):
+    def test_verify_valid_access_token(
+        self, jwt_service, sample_employee_data, mock_env_secret
+    ):
         """Test verifying valid access token"""
         token = jwt_service.create_access_token(sample_employee_data)
         payload = jwt_service.verify_token(token, "access")
@@ -105,8 +108,9 @@ class TestJWTService:
         assert payload["sub"] == "1"
         assert payload["type"] == "access"
 
-    def test_verify_valid_refresh_token(self, jwt_service, sample_employee_data,
-                                        mock_env_secret):
+    def test_verify_valid_refresh_token(
+        self, jwt_service, sample_employee_data, mock_env_secret
+    ):
         """Test verifying valid refresh token"""
         token = jwt_service.create_refresh_token(sample_employee_data)
         payload = jwt_service.verify_token(token, "refresh")
@@ -120,8 +124,9 @@ class TestJWTService:
         payload = jwt_service.verify_token("invalid_token", "access")
         assert payload is None
 
-    def test_verify_wrong_token_type(self, jwt_service, sample_employee_data,
-                                     mock_env_secret):
+    def test_verify_wrong_token_type(
+        self, jwt_service, sample_employee_data, mock_env_secret
+    ):
         """Test verifying token with wrong type"""
         access_token = jwt_service.create_access_token(sample_employee_data)
 
@@ -129,8 +134,9 @@ class TestJWTService:
         payload = jwt_service.verify_token(access_token, "refresh")
         assert payload is None
 
-    def test_verify_expired_token(self, jwt_service, sample_employee_data,
-                                  mock_env_secret):
+    def test_verify_expired_token(
+        self, jwt_service, sample_employee_data, mock_env_secret
+    ):
         """Test verifying expired token"""
         # Create token with very short expiry
         jwt_service.access_token_expire_minutes = -1  # Already expired
@@ -139,12 +145,10 @@ class TestJWTService:
         payload = jwt_service.verify_token(token, "access")
         assert payload is None
 
-    @patch('models.Session')
-    def test_refresh_access_token_success(self,
-                                          mock_session_class,
-                                          jwt_service,
-                                          sample_employee_data,
-                                          mock_env_secret):
+    @patch("models.Session")
+    def test_refresh_access_token_success(
+        self, mock_session_class, jwt_service, sample_employee_data, mock_env_secret
+    ):
         """Test successful access token refresh"""
         # Setup mock
         mock_session = MagicMock()
@@ -175,19 +179,15 @@ class TestJWTService:
         assert payload is not None
         assert payload["sub"] == "1"
 
-    def test_refresh_access_token_invalid_refresh(self,
-                                                  jwt_service,
-                                                  mock_env_secret):
+    def test_refresh_access_token_invalid_refresh(self, jwt_service, mock_env_secret):
         """Test refresh with invalid refresh token"""
         new_access_token = jwt_service.refresh_access_token("invalid_token")
         assert new_access_token is None
 
-    @patch('models.Session')
-    def test_refresh_access_token_user_not_found(self,
-                                                 mock_session_class,
-                                                 jwt_service,
-                                                 sample_employee_data,
-                                                 mock_env_secret):
+    @patch("models.Session")
+    def test_refresh_access_token_user_not_found(
+        self, mock_session_class, jwt_service, sample_employee_data, mock_env_secret
+    ):
         """Test refresh when user no longer exists"""
         # Setup mock
         mock_session = MagicMock()
@@ -201,18 +201,21 @@ class TestJWTService:
         new_access_token = jwt_service.refresh_access_token(refresh_token)
         assert new_access_token is None
 
-    def test_token_expiry_times(self, jwt_service, sample_employee_data,
-                                mock_env_secret):
+    def test_token_expiry_times(
+        self, jwt_service, sample_employee_data, mock_env_secret
+    ):
         """Test that token expiry times are reasonable"""
         access_token = jwt_service.create_access_token(sample_employee_data)
         refresh_token = jwt_service.create_refresh_token(sample_employee_data)
 
         secret = jwt_service._get_secret_key()
 
-        access_payload = jwt.decode(access_token, secret,
-                                    algorithms=[jwt_service.algorithm])
-        refresh_payload = jwt.decode(refresh_token, secret,
-                                     algorithms=[jwt_service.algorithm])
+        access_payload = jwt.decode(
+            access_token, secret, algorithms=[jwt_service.algorithm]
+        )
+        refresh_payload = jwt.decode(
+            refresh_token, secret, algorithms=[jwt_service.algorithm]
+        )
 
         access_exp = datetime.fromtimestamp(access_payload["exp"], UTC)
         refresh_exp = datetime.fromtimestamp(refresh_payload["exp"], UTC)
@@ -230,21 +233,28 @@ class TestJWTService:
         """Test that correct algorithm is used"""
         assert jwt_service.algorithm == "HS256"
 
-    def test_token_structure(self, jwt_service, sample_employee_data,
-                             mock_env_secret):
+    def test_token_structure(self, jwt_service, sample_employee_data, mock_env_secret):
         """Test token structure and required fields"""
         access_token = jwt_service.create_access_token(sample_employee_data)
 
         # JWT should have 3 parts separated by dots
-        parts = access_token.split('.')
+        parts = access_token.split(".")
         assert len(parts) == 3
 
         secret = jwt_service._get_secret_key()
-        payload = jwt.decode(access_token, secret,
-                             algorithms=[jwt_service.algorithm])
+        payload = jwt.decode(access_token, secret, algorithms=[jwt_service.algorithm])
 
         # Required fields
-        required_fields = ["sub", "employee_number", "name", "email", "role",
-                           "role_id", "exp", "iat", "type"]
+        required_fields = [
+            "sub",
+            "employee_number",
+            "name",
+            "email",
+            "role",
+            "role_id",
+            "exp",
+            "iat",
+            "type",
+        ]
         for field in required_fields:
             assert field in payload

@@ -1,6 +1,5 @@
 """
-Tests pour les opérations de création et modification
-Valide les fonctionnalités selon les exigences prérequis
+Tests for create and update operations across services
 """
 
 import pytest
@@ -15,46 +14,35 @@ from utils.validators import ValidationError
 
 
 class TestEmployeeOperations:
-    """Tests pour les opérations Employee"""
+    """Tests for Employee operations"""
 
     @pytest.fixture
     def employee_service(self):
-        """Mock repository et service"""
+        """Mock repository and service"""
         mock_repo = MagicMock()
         return EmployeeService(mock_repo)
 
     @pytest.fixture
     def management_user(self):
-        """Utilisateur management"""
-        return {
-            'id': 1,
-            'name': 'Manager',
-            'role': 'management',
-            'role_id': 3
-        }
+        """Management user"""
+        return {"id": 1, "name": "Manager", "role": "management", "role_id": 3}
 
     @pytest.fixture
     def sales_user(self):
-        """Utilisateur sales"""
-        return {
-            'id': 2,
-            'name': 'Sales Person',
-            'role': 'sales',
-            'role_id': 1
-        }
+        """Sales user"""
+        return {"id": 2, "name": "Sales Person", "role": "sales", "role_id": 1}
 
-    @patch('services.employee.require_permission')
-    def test_create_employee_success(self,
-                                     mock_permission,
-                                     employee_service,
-                                     management_user):
-        """Test création d'employé avec validation complète (inclut mot de passe)"""
+    @patch("services.employee.require_permission")
+    def test_create_employee_success(
+        self, mock_permission, employee_service, management_user
+    ):
+        """Test successful employee creation with validation"""
         employee_data = {
-            'name': 'John Doe',
-            'email': 'john.doe@example.com',
-            'employee_number': 'EMP001',
-            'role_id': 1,
-            'password': 'SecurePass123!'
+            "name": "John Doe",
+            "email": "john.doe@example.com",
+            "employee_number": "EMP001",
+            "role_id": 1,
+            "password": "SecurePass123!",
         }
 
         # Mock return value for successful creation
@@ -69,43 +57,39 @@ class TestEmployeeOperations:
         mock_permission.assert_called_once()
         employee_service.repository.create.assert_called_once()
 
-        # Vérifier que les données sont correctement validées
+        # Check that data was validated and passed correctly
         created_employee_data = employee_service.repository.create.call_args[0][0]
-        assert created_employee_data['name'] == 'John Doe'
-        assert created_employee_data['email'] == 'john.doe@example.com'
-        assert created_employee_data['employee_number'] == 'EMP001'
-        assert created_employee_data['role_id'] == 1
+        assert created_employee_data["name"] == "John Doe"
+        assert created_employee_data["email"] == "john.doe@example.com"
+        assert created_employee_data["employee_number"] == "EMP001"
+        assert created_employee_data["role_id"] == 1
 
-    @patch('services.employee.require_permission')
-    def test_create_employee_invalid_email(self,
-                                           mock_permission,
-                                           employee_service,
-                                           management_user):
-        """Test création d'employé avec email invalide"""
+    @patch("services.employee.require_permission")
+    def test_create_employee_invalid_email(
+        self, mock_permission, employee_service, management_user
+    ):
+        """Test employee creation with invalid email"""
         employee_data = {
-            'name': 'John Doe',
-            'email': 'invalid-email',
-            'employee_number': 'EMP001',
-            'role_id': 1
+            "name": "John Doe",
+            "email": "invalid-email",
+            "employee_number": "EMP001",
+            "role_id": 1,
         }
 
         with pytest.raises(ValidationError, match="Email"):
-            employee_service.create_employee(
-                employee_data, management_user
-                )
+            employee_service.create_employee(employee_data, management_user)
 
-    @patch('services.employee.require_permission')
-    def test_update_employee_role_change(self,
-                                         mock_permission,
-                                         employee_service,
-                                         management_user):
-        """Test modification du rôle d'un employé"""
+    @patch("services.employee.require_permission")
+    def test_update_employee_role_change(
+        self, mock_permission, employee_service, management_user
+    ):
+        """Test Employee update with role change"""
         employee_id = 1
         update_data = {
-            'role_id': 2,
-            'name': 'John Doe Updated',
-            'email': 'john.doe.updated@example.com',
-            'employee_number': 'EMP001'
+            "role_id": 2,
+            "name": "John Doe Updated",
+            "email": "john.doe.updated@example.com",
+            "employee_number": "EMP001",
         }
 
         # Mock existing employee
@@ -128,42 +112,35 @@ class TestEmployeeOperations:
         mock_permission.assert_called_once()
         employee_service.repository.update.assert_called_once()
 
-        # Vérifier que le rôle a été changé - second argument est les données
+        # Check that the role was changed - second argument is the data
         updated_employee_data = employee_service.repository.update.call_args[0][1]
-        assert updated_employee_data['role_id'] == 2
+        assert updated_employee_data["role_id"] == 2
 
 
 class TestContractOperations:
-    """Tests pour les opérations Contract"""
+    """Tests for Contract operations"""
 
     @pytest.fixture
     def contract_service(self):
-        """Mock repository et service"""
+        """Mock repository and service"""
         mock_repo = MagicMock()
         return ContractService(mock_repo)
 
     @pytest.fixture
     def sales_user(self):
-        """Utilisateur sales"""
-        return {
-            'id': 2,
-            'name': 'Sales Person',
-            'role': 'sales',
-            'role_id': 1
-        }
+        """Sales user"""
+        return {"id": 2, "name": "Sales Person", "role": "sales", "role_id": 1}
 
-    @patch('services.contract.require_permission')
-    def test_create_contract_with_validation(self,
-                                             mock_permission,
-                                             contract_service,
-                                             sales_user):
-
-        """Test création de contrat avec validation des montants"""
+    @patch("services.contract.require_permission")
+    def test_create_contract_with_validation(
+        self, mock_permission, contract_service, sales_user
+    ):
+        """Test contract creation with amount validation"""
         contract_data = {
-            'customer_id': '1',
-            'total_amount': 5000.0,
-            'remaining_amount': 3000.0,
-            'signed': False
+            "customer_id": "1",
+            "total_amount": 5000.0,
+            "remaining_amount": 3000.0,
+            "signed": False,
         }
 
         # Mock successful creation
@@ -178,41 +155,39 @@ class TestContractOperations:
         mock_permission.assert_called_once()
         contract_service.repository.create.assert_called_once()
 
-        # Vérifier que les données sont correctement validées
+        # Check that data was validated and passed correctly
         created_contract_data = contract_service.repository.create.call_args[0][0]
-        assert created_contract_data['customer_id'] == 1
-        assert created_contract_data['total_amount'] == 5000.0
-        assert created_contract_data['remaining_amount'] == 3000.0
-        assert created_contract_data['sales_contact_id'] == 2
+        assert created_contract_data["customer_id"] == 1
+        assert created_contract_data["total_amount"] == 5000.0
+        assert created_contract_data["remaining_amount"] == 3000.0
+        assert created_contract_data["sales_contact_id"] == 2
 
-    @patch('services.contract.require_permission')
-    def test_create_contract_invalid_amounts(self,
-                                             mock_permission,
-                                             contract_service,
-                                             sales_user):
-        """Test création de contrat avec montant restant > total"""
+    @patch("services.contract.require_permission")
+    def test_create_contract_invalid_amounts(
+        self, mock_permission, contract_service, sales_user
+    ):
+        """Test contract creation with remaining amount > total"""
         contract_data = {
-            'customer_id': '1',
-            'total_amount': 3000.0,
-            'remaining_amount': 5000.0,  # Invalide
-            'signed': False
+            "customer_id": "1",
+            "total_amount": 3000.0,
+            "remaining_amount": 5000.0,  # Invalide
+            "signed": False,
         }
 
         with pytest.raises(ValidationError, match="cannot be greater than"):
             contract_service.create_contract(contract_data, sales_user)
 
-    @patch('services.contract.require_permission')
-    def test_update_contract_all_fields(self,
-                                        mock_permission,
-                                        contract_service,
-                                        sales_user):
-        """Test modification de tous les champs d'un contrat"""
+    @patch("services.contract.require_permission")
+    def test_update_contract_all_fields(
+        self, mock_permission, contract_service, sales_user
+    ):
+        """Test update of contract with all fields"""
         contract_id = 1
         update_data = {
-            'customer_id': '2',  # String required
-            'total_amount': 8000.0,
-            'remaining_amount': 4000.0,
-            'signed': True
+            "customer_id": "2",  # String required
+            "total_amount": 8000.0,
+            "remaining_amount": 4000.0,
+            "signed": True,
         }
 
         # Mock existing contract
@@ -234,44 +209,38 @@ class TestContractOperations:
         mock_permission.assert_called_once()
         contract_service.repository.update.assert_called_once()
 
-        # Vérifier que les relations sont mises à jour - second argument est les données
+        # Check that the relations were updated - second argument is the data
         updated_contract_data = contract_service.repository.update.call_args[0][1]
-        assert updated_contract_data['customer_id'] == 2
-        assert updated_contract_data['signed'] is True
+        assert updated_contract_data["customer_id"] == 2
+        assert updated_contract_data["signed"] is True
 
 
 class TestEventOperations:
-    """Tests pour les opérations Event"""
+    """Tests for Event operations"""
 
     @pytest.fixture
     def event_service(self):
-        """Mock repository et service"""
+        """Mock repository and service"""
         mock_repo = MagicMock()
         return EventService(mock_repo)
 
     @pytest.fixture
     def support_user(self):
-        """Utilisateur support"""
-        return {
-            'id': 3,
-            'name': 'Support Person',
-            'role': 'support',
-            'role_id': 2
-        }
+        """Support user"""
+        return {"id": 3, "name": "Support Person", "role": "support", "role_id": 2}
 
-    @patch('services.event.require_permission')
-    def test_create_event_with_dates(self,
-                                     mock_permission,
-                                     event_service,
-                                     support_user):
-        """Test création d'événement avec validation des dates"""
+    @patch("services.event.require_permission")
+    def test_create_event_with_dates(
+        self, mock_permission, event_service, support_user
+    ):
+        """Test event creation with date validation"""
         event_data = {
-            'name': 'Conference 2024',
-            'customer_id': '1',
-            'date_start': '2024-06-01',
-            'date_end': '2024-06-03',
-            'attendees': 100,
-            'location': 'Conference Center'
+            "name": "Conference 2024",
+            "customer_id": "1",
+            "date_start": "2024-06-01",
+            "date_end": "2024-06-03",
+            "attendees": 100,
+            "location": "Conference Center",
         }
 
         # Mock successful creation
@@ -286,40 +255,36 @@ class TestEventOperations:
         mock_permission.assert_called_once()
         event_service.repository.create.assert_called_once()
 
-        # Vérifier que les données sont correctement validées
+        # Check that data was validated and passed correctly
         created_event_data = event_service.repository.create.call_args[0][0]
-        assert created_event_data['name'] == 'Conference 2024'
-        assert created_event_data['attendees'] == 100
-        assert created_event_data['support_contact_id'] == 3
+        assert created_event_data["name"] == "Conference 2024"
+        assert created_event_data["attendees"] == 100
+        assert created_event_data["support_contact_id"] == 3
 
-    @patch('services.event.require_permission')
-    def test_create_event_invalid_dates(self,
-                                        mock_permission,
-                                        event_service,
-                                        support_user):
-        """Test création d'événement avec dates invalides"""
+    @patch("services.event.require_permission")
+    def test_create_event_invalid_dates(
+        self, mock_permission, event_service, support_user
+    ):
+        """Test event creation with invalid dates"""
         event_data = {
-            'name': 'Conference 2024',
-            'customer_id': '1',
-            'date_start': '2024-06-03',
-            'date_end': '2024-06-01',  # Fin avant début
+            "name": "Conference 2024",
+            "customer_id": "1",
+            "date_start": "2024-06-03",
+            "date_end": "2024-06-01",  # End before start
         }
 
         with pytest.raises(ValidationError, match="cannot be before"):
             event_service.create_event(event_data, support_user)
 
-    @patch('services.event.require_permission')
-    def test_update_event_relations(self,
-                                    mock_permission,
-                                    event_service,
-                                    support_user):
-        """Test modification des relations d'un événement"""
+    @patch("services.event.require_permission")
+    def test_update_event_relations(self, mock_permission, event_service, support_user):
+        """Test update of event relations"""
         event_id = 1
         update_data = {
-            'customer_id': '2',  # String required
-            'contract_id': '3',  # String required
-            'name': 'Updated Event',
-            'attendees': 150
+            "customer_id": "2",  # String required
+            "contract_id": "3",  # String required
+            "name": "Updated Event",
+            "attendees": 150,
         }
 
         # Mock existing event
@@ -341,14 +306,14 @@ class TestEventOperations:
         mock_permission.assert_called_once()
         event_service.repository.update.assert_called_once()
 
-        # Vérifier que les relations sont mises à jour - second argument est les données
+        # Check that the relations were updated - second argument is the data
         updated_event_data = event_service.repository.update.call_args[0][1]
-        assert updated_event_data['customer_id'] == 2
-        assert updated_event_data['contract_id'] == 3
+        assert updated_event_data["customer_id"] == 2
+        assert updated_event_data["contract_id"] == 3
 
 
 class TestCustomerOperations:
-    """Tests pour les opérations Customer"""
+    """Tests for Customer operations"""
 
     @pytest.fixture
     def customer_service(self):
@@ -358,26 +323,20 @@ class TestCustomerOperations:
 
     @pytest.fixture
     def management_user(self):
-        """Utilisateur management"""
-        return {
-            'id': 1,
-            'name': 'Manager',
-            'role': 'management',
-            'role_id': 3
-        }
+        """USER MANAGEMENT"""
+        return {"id": 1, "name": "Manager", "role": "management", "role_id": 3}
 
-    @patch('services.customer.require_permission')
-    def test_create_customer_with_sales_assignment(self,
-                                                   mock_permission,
-                                                   customer_service,
-                                                   management_user):
-        """Test création de client avec assignation commerciale"""
+    @patch("services.customer.require_permission")
+    def test_create_customer_with_sales_assignment(
+        self, mock_permission, customer_service, management_user
+    ):
+        """Test customer creation with sales assignment"""
         customer_data = {
-            'full_name': 'John Smith',
-            'email': 'john.smith@example.com',
-            'phone': '+33123456789',
-            'company_name': 'Smith Corp',
-            'sales_contact_id': 5
+            "full_name": "John Smith",
+            "email": "john.smith@example.com",
+            "phone": "+33123456789",
+            "company_name": "Smith Corp",
+            "sales_contact_id": 5,
         }
 
         # Mock successful creation
@@ -392,22 +351,21 @@ class TestCustomerOperations:
         mock_permission.assert_called_once()
         customer_service.repository.create.assert_called_once()
 
-        # Vérifier que l'assignation est respectée
+        # Check that the assignment was respected
         created_customer_data = customer_service.repository.create.call_args[0][0]
-        assert created_customer_data['full_name'] == 'John Smith'
-        assert created_customer_data['sales_contact_id'] == 5  # Assigné par management
+        assert created_customer_data["full_name"] == "John Smith"
+        assert created_customer_data["sales_contact_id"] == 5  # Assigné par management
 
-    @patch('services.customer.require_permission')
-    def test_update_customer_email_validation(self,
-                                              mock_permission,
-                                              customer_service,
-                                              management_user):
-        """Test modification de client avec validation email"""
+    @patch("services.customer.require_permission")
+    def test_update_customer_email_validation(
+        self, mock_permission, customer_service, management_user
+    ):
+        """Test customer update with invalid email"""
         customer_data = {
-            'full_name': 'John Smith',
-            'email': 'invalid.email',  # Email invalide
-            'phone': '+33123456789',
-            'company_name': 'ABC Corp'
+            "full_name": "John Smith",
+            "email": "invalid.email",  # Invalid email
+            "phone": "+33123456789",
+            "company_name": "ABC Corp",
         }
 
         with pytest.raises(ValidationError, match="Email"):
@@ -415,17 +373,17 @@ class TestCustomerOperations:
 
 
 class TestValidationIntegration:
-    """Tests d'intégration pour la validation"""
+    """Tests integration of validators used in services"""
 
     def test_positive_amount_validation(self):
-        """Test validation des montants positifs"""
+        """Test validation of positive amounts"""
         from utils.validators import validate_positive_amount
 
-        # Cas valides
+        # Valid cases
         assert validate_positive_amount(100.0) == 100.0
         assert validate_positive_amount("50.5") == 50.5
 
-        # Cas invalides
+        # Invalid cases
         with pytest.raises(ValidationError):
             validate_positive_amount(0)
 
@@ -433,10 +391,10 @@ class TestValidationIntegration:
             validate_positive_amount(-10)
 
     def test_date_validation(self):
-        """Test validation des dates"""
+        """Test validation of dates"""
         from utils.validators import validate_date
 
-        # Cas valides
+        # Valid cases
         result = validate_date("2024-06-01")
         assert isinstance(result, datetime)
         assert result.year == 2024
@@ -446,6 +404,6 @@ class TestValidationIntegration:
         assert result.month == 6
         assert result.day == 15
 
-        # Cas invalides
+        # Invalid cases
         with pytest.raises(ValidationError):
             validate_date("invalid-date")
