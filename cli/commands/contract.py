@@ -79,9 +79,9 @@ def list_contracts(signed, unpaid, customer_id, limit):
 
         # Display contracts in table format
         click.echo(
-            f"{'ID':<5} {'Customer':<10} {'Total':<15} {'Remaining':<15} {'Status':<10} {'Sales':<8}"
+            f"{'ID':<5} {'Customer':<10} {'Total':<15} {'Remaining':<15} {'Status':<10} {'Sales':<8} {'Created':<12}"
         )
-        click.echo("-" * 63)
+        click.echo("-" * 75)
 
         for contract in contracts:
             # Status formatting
@@ -98,11 +98,16 @@ def list_contracts(signed, unpaid, customer_id, limit):
                 remaining_display = click.style(f"€{remaining:,.2f}", fg="yellow", bold=True)
             else:
                 remaining_display = click.style("€0.00 (Paid)", fg="green")
+                
+            # Format creation date
+            created_date = (
+                contract.date_created.strftime("%Y-%m-%d") if contract.date_created else "N/A"
+            )
 
             click.echo(
                 f"{contract.id:<5} {contract.customer_id:<10} "
                 f"{total_display:<15} {remaining_display:<25} "
-                f"{status_display:<20} {contract.sales_contact_id or 'N/A':<8}"
+                f"{status_display:<20} {contract.sales_contact_id or 'N/A':<8} {created_date:<12}"
             )
 
         click.echo(f"\nTotal: {len(contracts)} contract(s)")

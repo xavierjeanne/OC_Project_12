@@ -50,13 +50,21 @@ def list_employees(role, limit):
             return
 
         # Display employees in table format
-        click.echo(f"{'ID':<5} {'Name':<25} {'Email':<30} {'Role':<15} {'Emp#':<10}")
-        click.echo("-" * 85)
+        click.echo(f"{'ID':<5} {'Name':<20} {'Email':<25} {'Role':<10} {'Emp#':<8} {'Created':<12} {'Last Login':<12}")
+        click.echo("-" * 92)
 
         for emp in employees:
+            # Format dates
+            created_date = (
+                emp.created_at.strftime("%Y-%m-%d") if emp.created_at else "N/A"
+            )
+            last_login_date = (
+                emp.last_login.strftime("%Y-%m-%d") if emp.last_login else "Never"
+            )
+            
             click.echo(
-                f"{emp.id:<5} {emp.name:<25} {emp.email:<30}"
-                f"{emp.role or 'N/A':<15} {emp.employee_number:<10}"
+                f"{emp.id:<5} {emp.name[:19]:<20} {emp.email[:24]:<25}"
+                f"{emp.role or 'N/A':<10} {emp.employee_number:<8} {created_date:<12} {last_login_date:<12}"
             )
 
         click.echo(f"\nTotal: {len(employees)} employee(s)")

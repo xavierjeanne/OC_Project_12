@@ -4,7 +4,7 @@ from utils.permissions import Permission, require_permission, PermissionError
 from utils.validators import (validate_string_not_empty, validate_positive_amount,
                               validate_non_negative_amount, ValidationError)
 from utils.sentry_config import capture_exceptions
-from utils.audit_logger import crm_logger, log_exception_with_context
+from utils.audit_logger import crm_logger, log_exception_with_context, log_critical_action
 
 
 class ContractService:
@@ -74,6 +74,9 @@ class ContractService:
         existing_contract = self.repository.get_by_id(contract_id)
         if not existing_contract:
             raise ValidationError(f"Contract with ID {contract_id} not found")
+        
+        # Save original signed status before it gets modified
+        original_signed_status = existing_contract.signed
 
         # Check if sales can update this contract (ownership validation)
         if current_user['role'] == 'sales':
@@ -141,7 +144,7 @@ class ContractService:
         updated_contract = self.repository.update(contract_id, contract_data_dict)
 
         # CRITICAL: Log contract signing action for audit trail (Sentry uniquement)
-        if signed and not existing_contract.signed:
+        if signed and not original_signed_status:
             # Newly signed contract - CRITICAL LOG
             crm_logger.log_contract_signature(
                 user_info=current_user,
@@ -150,7 +153,7 @@ class ContractService:
                     "customer_id": customer_id,
                     "total_amount": total_amount,
                     "sales_contact_id": sales_contact_id,
-                    "previous_signed_status": existing_contract.signed
+                    "previous_signed_status": original_signed_status
                 }
             )
 

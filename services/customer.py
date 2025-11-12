@@ -5,6 +5,7 @@ from utils.validators import (
     validate_email,
     validate_phone,
     validate_string_not_empty,
+    validate_date,
     ValidationError,
 )
 from utils.sentry_config import capture_exceptions
@@ -31,6 +32,10 @@ class CustomerService:
         # Validation optional fields
         phone = validate_phone(customer_data.get("phone"))
         company_name = customer_data.get("company_name", "")
+        # Optional last_contact (datetime or string)
+        last_contact = customer_data.get("last_contact")
+        if last_contact:
+            last_contact = validate_date(last_contact, "last_contact")
 
         # Relation with the sales_contact (can be modified by management)
         if current_user.get("role") in ["management", "admin"]:
@@ -51,6 +56,7 @@ class CustomerService:
             "phone": phone,
             "company_name": company_name,
             "sales_contact_id": sales_contact_id,
+            "last_contact": last_contact,
         }
 
         try:
@@ -87,6 +93,10 @@ class CustomerService:
         # Validation optional fields
         phone = validate_phone(customer_data.get("phone"))
         company_name = customer_data.get("company_name", "")
+        # Optional last_contact (datetime or string)
+        last_contact = customer_data.get("last_contact")
+        if last_contact:
+            last_contact = validate_date(last_contact, "last_contact")
 
         # Relation with the sales_contact (can be modified by management)
         if current_user.get("role") in ["management", "admin"]:
@@ -107,6 +117,7 @@ class CustomerService:
             "phone": phone,
             "company_name": company_name,
             "sales_contact_id": sales_contact_id,
+            "last_contact": last_contact,
         }
 
         try:

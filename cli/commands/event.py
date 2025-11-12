@@ -74,15 +74,15 @@ def list_events(customer_id, upcoming, unassigned, limit):
 
         # Display events in table format
         click.echo(
-            f"{'ID':<5} {'Name':<25} {'Customer':<10} {'Support':<10} {'Location':<15} {'Attendees':<10} {'Start Date':<12}"
+            f"{'ID':<5} {'Name':<20} {'Customer':<8} {'Contract':<8} {'Support':<8} {'Location':<12} {'Attendees':<8} {'Start Date':<12} {'End Date':<12} {'Notes':<15}"
         )
-        click.echo("-" * 92)
+        click.echo("-" * 120)
 
         for event in events:
             # Format location (truncate if too long)
             location = (
-                event.location[:12] + "..."
-                if event.location and len(event.location) > 15
+                event.location[:9] + "..."
+                if event.location and len(event.location) > 12
                 else (event.location or "N/A")
             )
             
@@ -91,23 +91,38 @@ def list_events(customer_id, upcoming, unassigned, limit):
                 event.date_start.strftime("%Y-%m-%d") if event.date_start else "N/A"
             )
             
+            # Format end date
+            end_date = (
+                event.date_end.strftime("%Y-%m-%d") if event.date_end else "N/A"
+            )
+            
+            # Format contract ID
+            contract_display = str(event.contract_id) if event.contract_id else "N/A"
+            
             # Format support (handle None case)
             if event.support_contact_id:
                 support_display = str(event.support_contact_id)
             else:
                 support_display = "None"
+                
+            # Format notes (truncate if too long)
+            notes = (
+                event.notes[:12] + "..."
+                if event.notes and len(event.notes) > 15
+                else (event.notes or "N/A")
+            )
 
             # Build the line first, then apply color to specific parts
             line = (
-                f"{event.id:<5} {event.name[:24]:<25} {event.customer_id:<10} "
-                f"{support_display:<10} {location:<15} {event.attendees or 0:<10} "
-                f"{start_date:<12}"
+                f"{event.id:<5} {event.name[:19]:<20} {event.customer_id:<8} "
+                f"{contract_display:<8} {support_display:<8} {location:<12} {event.attendees or 0:<8} "
+                f"{start_date:<12} {end_date:<12} {notes:<15}"
             )
             
             # Color the support part if None
             if not event.support_contact_id:
-                # Replace "None      " with colored version
-                line = line.replace(f"{support_display:<10}", click.style(f"{'None':<10}", fg="red", bold=True))
+                # Replace "None    " with colored version
+                line = line.replace(f"{support_display:<8}", click.style(f"{'None':<8}", fg="red", bold=True))
             
             click.echo(line)
 
@@ -271,13 +286,11 @@ def update_event(
 
         if start_date:
             update_data["date_start"] = start_date
-        elif existing_event.date_start:
-            update_data["date_start"] = existing_event.date_start.strftime("%Y-%m-%d")
+        # Note: If no start_date provided, we don't modify the existing date
 
         if end_date:
             update_data["date_end"] = end_date
-        elif existing_event.date_end:
-            update_data["date_end"] = existing_event.date_end.strftime("%Y-%m-%d")
+        # Note: If no end_date provided, we don't modify the existing date
 
         if notes is not None:  # Allow empty string to clear notes
             update_data["notes"] = notes
@@ -328,6 +341,24 @@ def update_event(
                 type=int,
                 show_default=True,
             )
+            
+            # Prompt for start date
+            current_start = existing_event.date_start.strftime("%Y-%m-%d") if existing_event.date_start else ""
+            new_start_date = click.prompt(
+                "Start Date (YYYY-MM-DD)",
+                default=current_start,
+                show_default=True,
+                value_proc=lambda x: x if x.strip() else None
+            )
+            
+            # Prompt for end date
+            current_end = existing_event.date_end.strftime("%Y-%m-%d") if existing_event.date_end else ""
+            new_end_date = click.prompt(
+                "End Date (YYYY-MM-DD)",
+                default=current_end,
+                show_default=True,
+                value_proc=lambda x: x if x.strip() else None
+            )
 
             update_data.update(
                 {
@@ -338,6 +369,12 @@ def update_event(
                     "support_contact_id": new_support_id,
                 }
             )
+            
+            # Add dates to update_data if provided
+            if new_start_date:
+                update_data["date_start"] = new_start_date
+            if new_end_date:
+                update_data["date_end"] = new_end_date
 
         updated_event = service.update_event(event_id, update_data, current_user)
 

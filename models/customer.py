@@ -2,7 +2,7 @@
 Customer model for CRM
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func
 from sqlalchemy.orm import relationship
 from models.base import Base
 
@@ -15,7 +15,7 @@ class Customer(Base):
     email = Column(String, unique=True, nullable=False)
     phone = Column(String)
     company_name = Column(String)
-    date_created = Column(DateTime)
+    date_created = Column(DateTime, default=func.now())
     last_contact = Column(DateTime)
     sales_contact_id = Column(Integer, ForeignKey("employees.id", ondelete="SET NULL"))
 

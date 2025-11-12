@@ -177,6 +177,10 @@ def log_critical_action(action_type: str):
     @log_critical_action("employee_creation")
     def create_employee(self, data, user):
         ...
+    
+    @log_critical_action("contract_signature")
+    def update_contract(self, contract_id, data, user):
+        ...
     """
     def decorator(func):
         @wraps(func)
@@ -197,6 +201,8 @@ def log_critical_action(action_type: str):
                         crm_logger.log_employee_creation(current_user, kwargs)
                     elif current_user and action_type == "employee_modification":
                         crm_logger.log_employee_modification(current_user, args[1], kwargs)
+                    elif current_user and action_type == "contract_signature":
+                        crm_logger.log_contract_signature(current_user, kwargs)
                 
                 return result
                 

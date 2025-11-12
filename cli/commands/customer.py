@@ -19,6 +19,7 @@ from cli.utils.error_handling import (
 )
 
 
+
 def get_customer_service():
     """Create customer service instance"""
     session = Session()
@@ -67,15 +68,27 @@ def list_customers(sales_contact, limit):
 
         # Display customers in table format
         click.echo(
-            f"{'ID':<5} {'Company':<25} {'Contact':<20} {'Email':<30} {'Sales':<6}"
+            f"{'ID':<5} {'Company':<20} {'Contact':<18} {'Email':<25} {'Phone':<15} {'Sales':<6} {'Created':<12} {'Last Contact':<12}"
         )
-        click.echo("-" * 86)
+        click.echo("-" * 118)
 
         for customer in customers:
+            # Format phone
+            phone_display = customer.phone or "N/A"
+            
+            # Format dates
+            created_date = (
+                customer.date_created.strftime("%Y-%m-%d") if customer.date_created else "N/A"
+            )
+            last_contact = (
+                customer.last_contact.strftime("%Y-%m-%d") if customer.last_contact else "N/A"
+            )
+            
             click.echo(
-                f"{customer.id:<5} {customer.company_name or 'N/A':<25}"
-                f"{customer.full_name:<20} "
-                f"{customer.email:<30} {customer.sales_contact_id or 'N/A':<6}"
+                f"{customer.id:<5} {(customer.company_name or 'N/A')[:19]:<20}"
+                f"{customer.full_name[:17]:<18} "
+                f"{customer.email[:24]:<25} {phone_display[:14]:<15} {customer.sales_contact_id or 'N/A':<6} "
+                f"{created_date:<12} {last_contact:<12}"
             )
 
         click.echo(f"\nTotal: {len(customers)} customer(s)")
@@ -151,12 +164,13 @@ def create_customer(company_name, contact_name, email, phone, sales_contact_id):
 @click.option("--contact-name", help="Nouveau nom de contact")
 @click.option("--email", help="Nouvelle adresse email")
 @click.option("--phone", help="Nouveau numéro de téléphone")
+@click.option("--last-contact", help="Dernière date de contact (YYYY-MM-DD)")
 @click.option("--sales-contact-id", type=int, help="Nouvel ID du contact commercial")
 @cli_auth_required
 @require_permission(Permission.UPDATE_CUSTOMER)
 @handle_cli_errors
 def update_customer(
-    customer_id, company_name, contact_name, email, phone, sales_contact_id
+    customer_id, company_name, contact_name, email, phone, last_contact, sales_contact_id
 ):
     """Update an existing customer"""
     # ID validation
@@ -211,6 +225,13 @@ def update_customer(
         else:
             update_data["phone"] = existing_customer.phone
 
+        if last_contact:
+            # Validate date format
+            from utils.validators import validate_date
+            update_data["last_contact"] = validate_date(last_contact, "last_contact")
+        else:
+            update_data["last_contact"] = existing_customer.last_contact
+
         if sales_contact_id:
             update_data["sales_contact_id"] = sales_contact_id
         else:
@@ -218,7 +239,7 @@ def update_customer(
 
         # If no changes specified, prompt user
         if not any(
-            [company_name, contact_name, email, phone is not None, sales_contact_id]
+            [company_name, contact_name, email, phone is not None, last_contact, sales_contact_id]
         ):
             display_info_message("No changes specified. Interactive mode:")
             new_company = click.prompt(
@@ -235,6 +256,16 @@ def update_customer(
             new_phone = click.prompt(
                 "Phone", default=existing_customer.phone or "", show_default=True
             )
+            
+            # Prompt for last contact date
+            current_last_contact = existing_customer.last_contact.strftime("%Y-%m-%d") if existing_customer.last_contact else ""
+            new_last_contact = click.prompt(
+                "Last Contact Date (YYYY-MM-DD)",
+                default=current_last_contact,
+                show_default=True,
+                value_proc=lambda x: x if x.strip() else None
+            )
+            
             new_sales_id = click.prompt(
                 "Sales contact ID",
                 default=existing_customer.sales_contact_id or "",
@@ -262,10 +293,13 @@ def update_customer(
                     ),
                 }
             )
+            
+            # Add last contact date if provided
+            if new_last_contact:
+                from utils.validators import validate_date
+                update_data["last_contact"] = validate_date(new_last_contact, "last_contact")
 
-        updated_customer = service.update_customer(
-            customer_id, update_data, current_user
-        )
+        updated_customer = service.update_customer(customer_id, update_data, current_user)
 
         display_success_message(
             "Customer updated successfully!",
