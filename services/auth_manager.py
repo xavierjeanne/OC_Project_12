@@ -179,10 +179,8 @@ class AuthenticationManager:
         session = Session()
         try:
             employee = (session.query(Employee)
-                        .options(joinedload(Employee.employee_role))
-                        .get(self.current_user["id"])
-                        .options(joinedload(Employee.employee_role))
-                        .get(self.current_user["id"]))
+                        .filter(Employee.id == self.current_user["id"])
+                        .first())
             if not employee:
                 print("User session invalid")
                 self.logout()

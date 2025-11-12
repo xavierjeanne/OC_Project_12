@@ -3,10 +3,8 @@ from repositories.contract import ContractRepository
 from utils.permissions import Permission, require_permission, PermissionError
 from utils.validators import (validate_string_not_empty, validate_positive_amount,
                               validate_non_negative_amount, ValidationError)
-from utils.sentry_config import (
-    log_contract_signature,
-    capture_exceptions
-)
+from utils.sentry_config import capture_exceptions
+from utils.audit_logger import crm_logger, log_exception_with_context
 
 
 class ContractService:
@@ -17,6 +15,7 @@ class ContractService:
     def get_contract(self, contract_id):
         return self.repository.get_by_id(contract_id)
 
+    @log_exception_with_context(service="ContractService", operation="create")
     def create_contract(self, contract_data, current_user):
         require_permission(current_user, Permission.CREATE_CONTRACT)
 
@@ -67,6 +66,7 @@ class ContractService:
 
         return self.repository.create(contract_data_dict)
 
+    @log_exception_with_context(service="ContractService", operation="update")
     def update_contract(self, contract_id, contract_data, current_user):
         require_permission(current_user, Permission.UPDATE_CONTRACT)
 
@@ -137,21 +137,21 @@ class ContractService:
             'signed': signed
         }
 
-        # If the contract is marked as signed, emit a special Sentry log
+        # Update the contract
         updated_contract = self.repository.update(contract_id, contract_data_dict)
 
-        # Check if this is a signing action (changed from unsigned to signed)
-        if signed and hasattr(updated_contract, 'customer'):
-            current_user_email = getattr(current_user, 'email', 'system')
-            customer_name = getattr(updated_contract.customer,
-                                    'full_name',
-                                    'Unknown Customer')
-
-            log_contract_signature(
-                contract_id=contract_id,
-                customer_name=customer_name,
-                signed_by=current_user_email,
-                amount=float(total_amount)
+        # CRITICAL: Log contract signing action for audit trail (Sentry uniquement)
+        if signed and not existing_contract.signed:
+            # Newly signed contract - CRITICAL LOG
+            crm_logger.log_contract_signature(
+                user_info=current_user,
+                contract_data={
+                    "id": contract_id,
+                    "customer_id": customer_id,
+                    "total_amount": total_amount,
+                    "sales_contact_id": sales_contact_id,
+                    "previous_signed_status": existing_contract.signed
+                }
             )
 
         return updated_contract
@@ -176,19 +176,16 @@ class ContractService:
         contract_data = {'signed': True}
         updated_contract = self.repository.update(contract_id, contract_data)
 
-        # Special log for the signature
-        current_user_email = getattr(current_user, 'email', 'system')
-        customer_name = (getattr(updated_contract.customer,
-                                 'full_name',
-                                 'Unknown Customer')
-                         if hasattr(updated_contract, 'customer')
-                         else 'Unknown Customer')
-
-        log_contract_signature(
-            contract_id=contract_id,
-            customer_name=customer_name,
-            signed_by=current_user_email,
-            amount=float(updated_contract.total_amount)
+        # Special log for the signature (Sentry uniquement)
+        crm_logger.log_contract_signature(
+            user_info=current_user,
+            contract_data={
+                "id": contract_id,
+                "customer_id": updated_contract.customer_id,
+                "total_amount": updated_contract.total_amount,
+                "sales_contact_id": updated_contract.sales_contact_id,
+                "previous_signed_status": False
+            }
         )
 
         return updated_contract

@@ -8,6 +8,7 @@ from utils.validators import (
     ValidationError,
 )
 from utils.sentry_config import capture_exceptions
+from utils.audit_logger import log_exception_with_context
 
 
 class CustomerService:
@@ -19,6 +20,7 @@ class CustomerService:
         return self.repository.get_by_id(customer_id)
 
     @capture_exceptions
+    @log_exception_with_context(service="CustomerService", operation="create")
     def create_customer(self, customer_data, current_user):
         require_permission(current_user, Permission.CREATE_CUSTOMER)
 
@@ -62,6 +64,7 @@ class CustomerService:
             # Other integrity errors
             raise ValidationError("Data conflict: some information is already in use.")
 
+    @log_exception_with_context(service="CustomerService", operation="update")
     def update_customer(self, customer_id, customer_data, current_user):
         require_permission(current_user, Permission.UPDATE_CUSTOMER)
 

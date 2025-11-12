@@ -6,6 +6,7 @@ from utils.validators import (
     validate_non_negative_integer,
     ValidationError,
 )
+from utils.audit_logger import log_exception_with_context
 
 
 class EventService:
@@ -16,6 +17,7 @@ class EventService:
     def get_event(self, event_id):
         return self.repository.get_by_id(event_id)
 
+    @log_exception_with_context(service="EventService", operation="create")
     def create_event(self, event_data, current_user):
         require_permission(current_user, Permission.CREATE_EVENT)
 
@@ -76,6 +78,7 @@ class EventService:
 
         return self.repository.create(event_data_dict)
 
+    @log_exception_with_context(service="EventService", operation="update")
     def update_event(self, event_id, event_data, current_user):
         require_permission(current_user, Permission.UPDATE_EVENT)
 

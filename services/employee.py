@@ -2,11 +2,8 @@ from repositories.employee import EmployeeRepository
 from utils.permissions import Permission, require_permission
 from utils.validators import validate_string_not_empty, validate_email, ValidationError
 from services.auth import AuthService
-from utils.sentry_config import (
-    log_employee_creation,
-    log_employee_update,
-    capture_exceptions,
-)
+from utils.sentry_config import capture_exceptions
+from utils.audit_logger import crm_logger, log_exception_with_context
 
 
 class EmployeeService:
@@ -17,6 +14,7 @@ class EmployeeService:
     def get_employee(self, employee_id):
         return self.repository.get_by_id(employee_id)
 
+    @log_exception_with_context(service="EmployeeService", operation="create")
     def create_employee(self, employee_data, current_user):
         require_permission(current_user, Permission.CREATE_EMPLOYEE)
 
@@ -58,17 +56,22 @@ class EmployeeService:
         # Create the employee
         new_employee = self.repository.create(employee_data_dict)
 
-        # Log creation to Sentry
-        current_user_email = getattr(current_user, "email", "system")
-        log_employee_creation(
-            employee_id=new_employee.id,
-            employee_name=new_employee.name,
-            created_by=current_user_email,
+        # Log creation avec le nouveau système d'audit (Sentry uniquement)
+        crm_logger.log_employee_creation(
+            user_info=current_user,
+            employee_data={
+                "id": new_employee.id,
+                "full_name": name,
+                "employee_number": employee_number,
+                "email": email,
+                "role": role_id
+            }
         )
 
         return new_employee
 
     @capture_exceptions
+    @log_exception_with_context(service="EmployeeService", operation="update")
     def update_employee(self, employee_id, employee_data, current_user):
         require_permission(current_user, Permission.UPDATE_EMPLOYEE)
 
@@ -117,14 +120,12 @@ class EmployeeService:
         # Update the employee
         updated_employee = self.repository.update(employee_id, employee_data_dict)
 
-        # Log the update to Sentry (only if there are changes)
+        # Log the update avec le nouveau système d'audit (seulement si changements)
         if changes:
-            current_user_email = getattr(current_user, "email", "system")
-            log_employee_update(
+            crm_logger.log_employee_modification(
+                user_info=current_user,
                 employee_id=employee_id,
-                employee_name=updated_employee.name,
-                updated_by=current_user_email,
-                changes=changes,
+                changes=changes
             )
 
         return updated_employee
