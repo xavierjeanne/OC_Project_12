@@ -5,7 +5,7 @@ Covers CRUD methods and error handling
 
 import pytest
 import unittest.mock
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, MagicMock, patch
 from sqlalchemy.exc import IntegrityError
 
 from services.customer import CustomerService
@@ -185,6 +185,11 @@ class TestCustomerServiceComplete:
             "email": "john.updated@example.com"
         }
         expected_customer = {"id": 1, "full_name": "John Updated"}
+        
+        # Mock existing customer assigned to this sales user
+        mock_existing_customer = MagicMock()
+        mock_existing_customer.sales_contact_id = self.sales_user["id"]
+        self.mock_repo.get_by_id.return_value = mock_existing_customer
         self.mock_repo.update.return_value = expected_customer
 
         # When

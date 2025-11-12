@@ -1,5 +1,5 @@
 from repositories.event import EventRepository
-from utils.permissions import Permission, require_permission
+from utils.permissions import Permission, require_permission, PermissionError
 from utils.validators import (
     validate_string_not_empty,
     validate_date,
@@ -78,6 +78,18 @@ class EventService:
 
     def update_event(self, event_id, event_data, current_user):
         require_permission(current_user, Permission.UPDATE_EVENT)
+
+        # Get existing event to check ownership for support
+        existing_event = self.repository.get_by_id(event_id)
+        if not existing_event:
+            raise ValidationError(f"Event with ID {event_id} not found")
+
+        # Check if support can update this event (ownership validation)
+        if current_user["role"] == "support":
+            if existing_event.support_contact_id != current_user["id"]:
+                raise PermissionError(
+                    f"Support employee can only update their own assigned events"
+                )
 
         # Validation required fields
         name = validate_string_not_empty(event_data["name"], "name")

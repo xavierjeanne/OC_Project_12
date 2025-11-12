@@ -118,8 +118,8 @@ class TestEmployeeService:
 class TestContractService:
     """Tests for ContractService"""
 
-    def test_create_contract_as_sales(self, mock_sales_user):
-        """Sales can create contracts"""
+    def test_create_contract_as_sales_denied(self, mock_sales_user):
+        """Sales cannot create contracts (corrected permission)"""
         mock_repo = MagicMock()
         service = ContractService(mock_repo)
 
@@ -131,13 +131,13 @@ class TestContractService:
 
         # Convert Mock to dictionary
         sales_user = {"id": 2, "role": "sales", "name": "Sales Rep"}
-        service.create_contract(contract_data, sales_user)
+        
+        # Should raise PermissionError
+        with pytest.raises(PermError):
+            service.create_contract(contract_data, sales_user)
 
-        assert mock_repo.create.called
-        created_contract_data = mock_repo.create.call_args[0][0]
-        assert created_contract_data["customer_id"] == 100
-        assert created_contract_data["total_amount"] == 5000.0
-        assert created_contract_data["sales_contact_id"] == sales_user["id"]
+        # Repository should not be called
+        assert not mock_repo.create.called
 
     def test_create_contract_as_support_denied(self, mock_support_user):
         """Support cannot create contracts"""
@@ -205,13 +205,19 @@ class TestEventService:
             service.create_event(event_data, mock_support_user)
 
     def test_update_event_as_support(self, mock_support_user):
-        """Support can update events"""
+        """Support can update events assigned to them"""
         mock_repo = MagicMock()
         service = EventService(mock_repo)
         event_data = {"name": "Conference 2025 Updated", "customer_id": "200"}
 
         # Convert Mock to dictionary
         support_user = {"id": 3, "role": "support", "name": "Support Rep"}
+        
+        # Mock existing event assigned to this support user
+        mock_existing_event = MagicMock()
+        mock_existing_event.support_contact_id = support_user["id"]
+        mock_repo.get_by_id.return_value = mock_existing_event
+        
         service.update_event(1, event_data, support_user)
         assert mock_repo.update.called
         # Premier argument est l'event_id, second argument est les données

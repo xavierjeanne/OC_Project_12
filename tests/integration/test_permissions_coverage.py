@@ -108,11 +108,11 @@ class TestPermissions:
         # But not delete
         assert Permission.DELETE_CUSTOMER not in sales_permissions
 
-        # Sales can do anything with contracts
-        assert Permission.CREATE_CONTRACT in sales_permissions
+        # Sales can read and update contracts (but not create or sign)
+        assert Permission.CREATE_CONTRACT not in sales_permissions
         assert Permission.READ_CONTRACT in sales_permissions
         assert Permission.UPDATE_CONTRACT in sales_permissions
-        assert Permission.SIGN_CONTRACT in sales_permissions
+        assert Permission.SIGN_CONTRACT not in sales_permissions
 
     def test_role_permissions_support(self):
         """Test permissions of the support role"""
@@ -154,9 +154,10 @@ class TestPermissions:
         # Test granted permissions
         assert has_permission(sales_employee, Permission.CREATE_CUSTOMER) is True
         assert has_permission(sales_employee, Permission.READ_CUSTOMER) is True
-        assert has_permission(sales_employee, Permission.CREATE_CONTRACT) is True
+        assert has_permission(sales_employee, Permission.UPDATE_CONTRACT) is True
 
-        # Test denied permissions
+        # Test denied permissions (corrected)
+        assert has_permission(sales_employee, Permission.CREATE_CONTRACT) is False
         assert has_permission(sales_employee, Permission.DELETE_CUSTOMER) is False
         assert has_permission(sales_employee, Permission.DELETE_EMPLOYEE) is False
 

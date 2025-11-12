@@ -1,6 +1,6 @@
 from sqlalchemy.exc import IntegrityError
 from repositories.customer import CustomerRepository
-from utils.permissions import Permission, require_permission
+from utils.permissions import Permission, require_permission, PermissionError
 from utils.validators import (
     validate_email,
     validate_phone,
@@ -64,6 +64,18 @@ class CustomerService:
 
     def update_customer(self, customer_id, customer_data, current_user):
         require_permission(current_user, Permission.UPDATE_CUSTOMER)
+
+        # Get existing customer to check ownership for sales
+        existing_customer = self.repository.get_by_id(customer_id)
+        if not existing_customer:
+            raise ValidationError(f"Customer with ID {customer_id} not found")
+
+        # Check if sales can update this customer (ownership validation)
+        if current_user.get("role") == "sales":
+            if existing_customer.sales_contact_id != current_user.get("id"):
+                raise PermissionError(
+                    f"Sales employee can only update their own assigned customers"
+                )
 
         # Validation required fields
         full_name = validate_string_not_empty(customer_data["full_name"], "full_name")

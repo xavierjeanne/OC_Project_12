@@ -181,19 +181,20 @@ class TestContractOperations:
     def test_update_contract_all_fields(
         self, mock_permission, contract_service, sales_user
     ):
-        """Test update of contract with all fields"""
+        """Test update of contract with all fields (sales cannot sign)"""
         contract_id = 1
         update_data = {
             "customer_id": "2",  # String required
             "total_amount": 8000.0,
             "remaining_amount": 4000.0,
-            "signed": True,
+            # Removed "signed": True - sales cannot modify signature
         }
 
-        # Mock existing contract
+        # Mock existing contract assigned to this sales user
         mock_existing = MagicMock()
         mock_existing.id = contract_id
-        mock_existing.sales_contact_id = 2
+        mock_existing.sales_contact_id = sales_user["id"]  # Must match sales user
+        mock_existing.signed = False
         contract_service.repository.get_by_id.return_value = mock_existing
 
         # Mock updated contract
@@ -212,7 +213,8 @@ class TestContractOperations:
         # Check that the relations were updated - second argument is the data
         updated_contract_data = contract_service.repository.update.call_args[0][1]
         assert updated_contract_data["customer_id"] == 2
-        assert updated_contract_data["signed"] is True
+        # Sales cannot sign contracts, so signed should remain False
+        assert updated_contract_data["signed"] is False
 
 
 class TestEventOperations:

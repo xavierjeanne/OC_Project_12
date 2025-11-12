@@ -46,19 +46,15 @@ class PermissionError(Exception):
 # Permission definitions by role
 ROLE_PERMISSIONS = {
     "sales": [
-        # Customers: full CRUD
+        # Customers: create and update (not delete)
         Permission.CREATE_CUSTOMER,
         Permission.READ_CUSTOMER,
         Permission.UPDATE_CUSTOMER,
-        # No DELETE_CUSTOMER for sales
         # Employees: read only
         Permission.READ_EMPLOYEE,
-        # Contracts: full CRUD + signing
-        Permission.CREATE_CONTRACT,
+        # Contracts: read and update only (management creates and signs)
         Permission.READ_CONTRACT,
         Permission.UPDATE_CONTRACT,
-        Permission.SIGN_CONTRACT,
-        # No DELETE_CONTRACT
         # Events: read and create
         Permission.CREATE_EVENT,
         Permission.READ_EVENT,

@@ -1,6 +1,6 @@
 from models import Contract
 from repositories.contract import ContractRepository
-from utils.permissions import Permission, require_permission
+from utils.permissions import Permission, require_permission, PermissionError
 from utils.validators import (validate_string_not_empty, validate_positive_amount,
                               validate_non_negative_amount, ValidationError)
 from utils.sentry_config import (
@@ -70,6 +70,18 @@ class ContractService:
     def update_contract(self, contract_id, contract_data, current_user):
         require_permission(current_user, Permission.UPDATE_CONTRACT)
 
+        # Get existing contract to check ownership for sales
+        existing_contract = self.repository.get_by_id(contract_id)
+        if not existing_contract:
+            raise ValidationError(f"Contract with ID {contract_id} not found")
+
+        # Check if sales can update this contract (ownership validation)
+        if current_user['role'] == 'sales':
+            if existing_contract.sales_contact_id != current_user['id']:
+                raise PermissionError(
+                    f"Sales employee can only update their own assigned contracts"
+                )
+
         # Validate required fields
         customer_id = validate_string_not_empty(contract_data["customer_id"],
                                                 "customer_id")
@@ -90,7 +102,17 @@ class ContractService:
 
         # Optional fields
         date_created = contract_data.get("date_created")
-        signed = bool(contract_data.get("signed", False))
+        
+        # CRITICAL: Only management/admin can modify the 'signed' status
+        if 'signed' in contract_data:
+            if current_user['role'] not in ['management', 'admin']:
+                raise PermissionError(
+                    "Only management can sign or modify signature status of contracts"
+                )
+            signed = bool(contract_data.get("signed", False))
+        else:
+            # Keep existing signature status if not provided
+            signed = existing_contract.signed
 
         # Relation with the sales_contact (can be modified by management)
         if current_user['role'] in ['management', 'admin']:
