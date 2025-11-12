@@ -177,7 +177,15 @@ class TestEventService:
     def test_create_event_as_sales(self, mock_sales_user):
         """Sales can create events"""
         mock_repo = MagicMock()
-        service = EventService(mock_repo)
+        mock_contract_repo = MagicMock()
+        
+        # Mock signed contract
+        mock_contract = MagicMock()
+        mock_contract.signed = True
+        mock_contract.customer_id = 200
+        mock_contract_repo.get_by_id.return_value = mock_contract
+        
+        service = EventService(mock_repo, mock_contract_repo)
         event_data = {
             "name": "Conference 2025",
             "customer_id": "200",

@@ -158,8 +158,8 @@ class TestRepositoriesCoverage:
         mock_db = MagicMock()
         repo = EmployeeRepository(mock_db)
 
-        # Test get_all sans résultat
-        mock_db.query.return_value.all.return_value = []
+        # Test get_all sans résultat - need to mock order_by chain
+        mock_db.query.return_value.order_by.return_value.all.return_value = []
         result = repo.get_all()
         assert result == []
 

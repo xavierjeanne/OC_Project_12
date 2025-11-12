@@ -52,8 +52,8 @@ class TestRepositoriesDeepCoverage:
         mock_db = MagicMock()
         repo = CustomerRepository(mock_db)
 
-        # Test get_all avec résultat vide
-        mock_db.query.return_value.all.return_value = []
+        # Test get_all avec résultat vide - need to mock order_by chain
+        mock_db.query.return_value.order_by.return_value.all.return_value = []
         result = repo.get_all()
         assert result == []
 
@@ -64,8 +64,8 @@ class TestRepositoriesDeepCoverage:
         mock_db = MagicMock()
         repo = ContractRepository(mock_db)
 
-        # Test avec query simple
-        mock_db.query.return_value.all.return_value = []
+        # Test avec query simple - need to mock order_by chain
+        mock_db.query.return_value.order_by.return_value.all.return_value = []
         result = repo.get_all()
         assert result == []
 
@@ -76,8 +76,8 @@ class TestRepositoriesDeepCoverage:
         mock_db = MagicMock()
         repo = EventRepository(mock_db)
 
-        # Test avec query simple
-        mock_db.query.return_value.all.return_value = []
+        # Test avec query simple - need to mock order_by chain  
+        mock_db.query.return_value.order_by.return_value.all.return_value = []
         result = repo.get_all()
         assert result == []
 

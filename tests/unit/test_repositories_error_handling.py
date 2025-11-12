@@ -47,7 +47,7 @@ class TestRepositoryErrorHandling:
         """Test error handling in find_by_role"""
         repo = EmployeeRepository(mock_session)
 
-        with patch.object(repo, "filter_by", side_effect=SQLAlchemyError("DB Error")):
+        with patch.object(mock_session, "query", side_effect=SQLAlchemyError("DB Error")):
             with pytest.raises(SQLAlchemyError):
                 repo.find_by_role("sales")
 
@@ -127,11 +127,12 @@ class TestRepositoryEdgeCases:
         """Test find_by_role with a non-existent role"""
         repo = EmployeeRepository(mock_session)
 
-        # Mock filter_by to return an empty list
-        with patch.object(repo, "filter_by", return_value=[]):
-            result = repo.find_by_role("invalid_role")
-            assert isinstance(result, list)
-            assert len(result) == 0
+        # Mock query chain to return empty list - need to mock .order_by as well
+        mock_session.query.return_value.join.return_value.filter.return_value.order_by.return_value.all.return_value = []
+        
+        result = repo.find_by_role("invalid_role")
+        assert isinstance(result, list)
+        assert len(result) == 0
 
     def test_event_find_by_support_contact_nonexistent(self, mock_session):
         """Test find_by_support_contact with a non-existent ID"""

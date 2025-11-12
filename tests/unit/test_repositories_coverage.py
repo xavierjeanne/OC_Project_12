@@ -127,7 +127,8 @@ class TestRepositoryBasics:
         """Test basic get_all functionality"""
         mock_session = Mock()
         mock_items = [Mock() for _ in range(3)]
-        mock_session.query().all.return_value = mock_items
+        # Need to mock the full chain including order_by
+        mock_session.query.return_value.order_by.return_value.all.return_value = mock_items
 
         with patch("repositories.base.logger"):
             repo = EventRepository(mock_session)

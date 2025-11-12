@@ -224,7 +224,8 @@ class TestEventOperations:
     def event_service(self):
         """Mock repository and service"""
         mock_repo = MagicMock()
-        return EventService(mock_repo)
+        mock_contract_repo = MagicMock()
+        return EventService(mock_repo, mock_contract_repo)
 
     @pytest.fixture
     def support_user(self):
@@ -239,11 +240,18 @@ class TestEventOperations:
         event_data = {
             "name": "Conference 2024",
             "customer_id": "1",
+            "contract_id": "1",  # Required now
             "date_start": "2024-06-01",
             "date_end": "2024-06-03",
             "attendees": 100,
             "location": "Conference Center",
         }
+
+        # Mock contract repository and signed contract
+        mock_contract = MagicMock()
+        mock_contract.signed = True
+        mock_contract.customer_id = 1
+        event_service.contract_repository.get_by_id.return_value = mock_contract
 
         # Mock successful creation
         mock_event = MagicMock()
@@ -261,7 +269,8 @@ class TestEventOperations:
         created_event_data = event_service.repository.create.call_args[0][0]
         assert created_event_data["name"] == "Conference 2024"
         assert created_event_data["attendees"] == 100
-        assert created_event_data["support_contact_id"] == 3
+        # support_contact_id should be None by default (not auto-assigned anymore)
+        assert created_event_data["support_contact_id"] is None
 
     @patch("services.event.require_permission")
     def test_create_event_invalid_dates(
@@ -271,9 +280,16 @@ class TestEventOperations:
         event_data = {
             "name": "Conference 2024",
             "customer_id": "1",
+            "contract_id": "1",  # Required now
             "date_start": "2024-06-03",
             "date_end": "2024-06-01",  # End before start
         }
+
+        # Mock contract repository and signed contract
+        mock_contract = MagicMock()
+        mock_contract.signed = True
+        mock_contract.customer_id = 1
+        event_service.contract_repository.get_by_id.return_value = mock_contract
 
         with pytest.raises(ValidationError, match="cannot be before"):
             event_service.create_event(event_data, support_user)

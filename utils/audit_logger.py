@@ -72,8 +72,9 @@ class CRMLogger:
                 "role": employee_data.get("role")
             })
             
-            # ain message
-            message = f"Employee created: {employee_data.get('full_name')} ({employee_data.get('employee_number')}) by {user_info.get('full_name')}"
+            # Message principal avec fallback pour éviter "by None"
+            creator_name = user_info.get('full_name') or user_info.get('employee_number') or f"User #{user_info.get('id', 'Unknown')}"
+            message = f"Employee created: {employee_data.get('full_name')} ({employee_data.get('employee_number')}) by {creator_name}"
             sentry_sdk.capture_message(message, level="info")
     
     def log_employee_modification(self, user_info: Dict[str, Any], 
@@ -101,9 +102,10 @@ class CRMLogger:
                 "change_count": len(changes)
             })
             
-            # Main message with details of changes
+            # Main message with details of changes et fallback
             changed_fields = list(changes.keys())
-            message = f"Employee {employee_id} modified by {user_info.get('full_name')}: {', '.join(changed_fields)}"
+            modifier_name = user_info.get('full_name') or user_info.get('employee_number') or f"User #{user_info.get('id', 'Unknown')}"
+            message = f"Employee {employee_id} modified by {modifier_name}: {', '.join(changed_fields)}"
             sentry_sdk.capture_message(message, level="info")
     
     def log_contract_signature(self, user_info: Dict[str, Any], 
@@ -135,9 +137,10 @@ class CRMLogger:
                 "previous_signed_status": contract_data.get("previous_signed_status", False)
             })
             
-            # Critical message
+            # Critical message avec fallback
             amount = contract_data.get("total_amount", 0)
-            message = f"🔥 CRITICAL: Contract {contract_data.get('id')} signed for {amount}€ by {user_info.get('full_name')} ({user_info.get('role')})"
+            signer_name = user_info.get('full_name') or user_info.get('employee_number') or f"User #{user_info.get('id', 'Unknown')}"
+            message = f"Contract {contract_data.get('id')} signed for {amount}€ by {signer_name} ({user_info.get('role')})"
             sentry_sdk.capture_message(message, level="warning")
     
     def log_unexpected_exception(self, exception: Exception, context: Dict[str, Any]) -> None:

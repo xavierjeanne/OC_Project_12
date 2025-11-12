@@ -8,7 +8,7 @@ from typing import List
 
 from sqlalchemy.orm import Session
 
-from models import Employee
+from models import Employee, Role
 from repositories.base import BaseRepository
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,14 @@ class EmployeeRepository(BaseRepository[Employee]):
             List of employees
         """
         try:
-            employees = self.filter_by(role=role)
+            employees = (
+                self.db.query(self.model)
+                .join(self.model.employee_role)
+                .filter(Role.name == role)
+                .order_by(self.model.id)
+                .all()
+            )
+
             logger.debug(f"Found {len(employees)} employees with role: {role}")
             return employees
         except Exception as e:

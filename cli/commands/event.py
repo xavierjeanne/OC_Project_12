@@ -6,6 +6,7 @@ import click
 from datetime import datetime
 from models import Session
 from repositories.event import EventRepository
+from repositories.contract import ContractRepository
 from services.event import EventService
 from utils.permissions import PermissionError, Permission
 from cli.utils.auth import cli_auth_required, get_current_user, require_permission
@@ -15,8 +16,9 @@ from cli.utils.error_handling import handle_cli_errors, display_success_message
 def get_event_service():
     """Create event service instance"""
     session = Session()
-    repository = EventRepository(session)
-    return EventService(repository), session
+    event_repository = EventRepository(session)
+    contract_repository = ContractRepository(session)
+    return EventService(event_repository, contract_repository), session
 
 
 @click.group(name="event")
@@ -25,20 +27,13 @@ def event_group():
 
 
 @event_group.command(name="list")
-@click.option("--support-contact", type=int, help="Filter by support contact ID")
 @click.option("--customer-id", type=int, help="Filter by customer ID")
-@click.option("--upcoming", is_flag=True, help="Show only upcoming events")
-@click.option(
-    "--no-support", is_flag=True, help="Show only events without assigned support"
-)
-@click.option("--all", is_flag=True, help="Show all events (management override)")
-@click.option("--my-events", is_flag=True, help="Show only my assigned events")
-@click.option("--limit", default=20, help="Maximum number of results")
+@click.option("--upcoming", is_flag=True, help="Show only future events")
+@click.option("--unassigned", is_flag=True, help="Show events without support")
+@click.option("--limit", default=20, help="Maximum results (default: 20)")
 @cli_auth_required
 @handle_cli_errors
-def list_events(
-    support_contact, customer_id, upcoming, no_support, all, my_events, limit
-):
+def list_events(customer_id, upcoming, unassigned, limit):
     """Display event list"""
     click.echo(click.style("=== Event List ===", fg="blue", bold=True))
 
@@ -48,36 +43,16 @@ def list_events(
         current_user = get_current_user()
         repository = service.repository
 
-        # Determine which events to show based on options and user role
-        if no_support:
+        # Get events based on user role and permissions
+        if unassigned:
             events = repository.find_without_support()
             click.echo(
                 click.style("Events without assigned support:", fg="cyan", bold=True)
-            )
-        elif my_events:
-            events = repository.find_by_support_contact(current_user["id"])
-            click.echo(
-                click.style(
-                    f'My assigned events (User ID: {current_user["id"]}):',
-                    fg="blue",
-                    bold=True,
-                )
-            )
-        elif all and current_user["role"] in ["management", "admin"]:
-            events = repository.get_all()
-            click.echo(
-                click.style("All events (management view):", fg="magenta", bold=True)
             )
         else:
             events = service.list_events(current_user)
             if current_user["role"] == "support":
                 click.echo(click.style("Your assigned events:", fg="blue", bold=True))
-
-        # Apply support contact filter if specified
-        if support_contact:
-            events = [
-                event for event in events if event.support_contact_id == support_contact
-            ]
 
         # Apply customer filter if specified
         if customer_id:
@@ -99,35 +74,42 @@ def list_events(
 
         # Display events in table format
         click.echo(
-            f"{'ID':<5} {'Name':<25} {'Customer':<10}"
-            f"{'Support':<10} {'Location':<15} {'Attendees':<10} {'Start Date':<12}"
+            f"{'ID':<5} {'Name':<25} {'Customer':<10} {'Support':<10} {'Location':<15} {'Attendees':<10} {'Start Date':<12}"
         )
-        click.echo("-" * 102)
+        click.echo("-" * 92)
 
         for event in events:
+            # Format location (truncate if too long)
             location = (
                 event.location[:12] + "..."
                 if event.location and len(event.location) > 15
                 else (event.location or "N/A")
             )
+            
+            # Format start date
             start_date = (
                 event.date_start.strftime("%Y-%m-%d") if event.date_start else "N/A"
             )
-            support_id = (
-                str(event.support_contact_id) if event.support_contact_id else "None"
-            )
-
-            # Highlight events without support in red
-            if not event.support_contact_id:
-                support_display = click.style("None", fg="red", bold=True)
+            
+            # Format support (handle None case)
+            if event.support_contact_id:
+                support_display = str(event.support_contact_id)
             else:
-                support_display = f"{support_id:<10}"
+                support_display = "None"
 
-            click.echo(
-                f"{event.id:<5} {event.name[:24]:<25} {event.customer_id:<10}"
-                f"{support_display} {location:<15} {event.attendees or 0:<10}"
+            # Build the line first, then apply color to specific parts
+            line = (
+                f"{event.id:<5} {event.name[:24]:<25} {event.customer_id:<10} "
+                f"{support_display:<10} {location:<15} {event.attendees or 0:<10} "
                 f"{start_date:<12}"
             )
+            
+            # Color the support part if None
+            if not event.support_contact_id:
+                # Replace "None      " with colored version
+                line = line.replace(f"{support_display:<10}", click.style(f"{'None':<10}", fg="red", bold=True))
+            
+            click.echo(line)
 
         click.echo(f"\nTotal: {len(events)} event(s)")
 
@@ -142,13 +124,13 @@ def list_events(
 @event_group.command(name="create")
 @click.option("--name", prompt="Event name", help="Event name")
 @click.option("--customer-id", prompt="Customer ID", type=int, help="Customer ID")
-@click.option("--contract-id", type=int, help="Contract ID (optional)")
+@click.option("--contract-id", prompt="Contract ID", type=int, help="Contract ID (required - must be signed)")
 @click.option("--location", help="Event location")
 @click.option("--attendees", type=int, help="Number of attendees")
 @click.option("--start-date", help="Start date (YYYY-MM-DD)")
 @click.option("--end-date", help="End date (YYYY-MM-DD)")
 @click.option("--notes", help="Event notes")
-@click.option("--support-contact-id", type=int, help="Support contact employee ID")
+@click.option("--support-contact-id", type=int, help="Support contact employee ID (optional - management only)")
 @cli_auth_required
 @require_permission(Permission.CREATE_EVENT)
 @handle_cli_errors
@@ -174,11 +156,10 @@ def create_event(
         event_data = {
             "name": name,
             "customer_id": str(customer_id),  # Service expects string
+            "contract_id": str(contract_id),  # Required field
         }
 
         # Add optional fields if provided
-        if contract_id:
-            event_data["contract_id"] = str(contract_id)
         if location:
             event_data["location"] = location
         if attendees:

@@ -79,11 +79,9 @@ def list_contracts(signed, unpaid, customer_id, limit):
 
         # Display contracts in table format
         click.echo(
-            f"{'ID':<5} {'Customer':<10} "
-            f"{'Total':<12} {'Remaining':<12}"
-            f"{'Status':<12} {'Payment':<12} {'Sales':<8}"
+            f"{'ID':<5} {'Customer':<10} {'Total':<15} {'Remaining':<15} {'Status':<10} {'Sales':<8}"
         )
-        click.echo("-" * 82)
+        click.echo("-" * 63)
 
         for contract in contracts:
             # Status formatting
@@ -94,17 +92,17 @@ def list_contracts(signed, unpaid, customer_id, limit):
 
             # Payment status formatting
             remaining = contract.remaining_amount or 0
+            total_display = f"€{contract.total_amount:,.2f}"
+            
             if remaining > 0:
-                payment_display = click.style(
-                    f"€{remaining:,.2f}", fg="yellow", bold=True
-                )
+                remaining_display = click.style(f"€{remaining:,.2f}", fg="yellow", bold=True)
             else:
-                payment_display = click.style("Paid", fg="green")
+                remaining_display = click.style("€0.00 (Paid)", fg="green")
 
             click.echo(
-                f"{contract.id:<5} {contract.customer_id:<10} €"
-                f"{contract.total_amount:<10,.2f} {payment_display:<22}"
-                f"{status_display:<22} {contract.sales_contact_id or 'N/A':<8}"
+                f"{contract.id:<5} {contract.customer_id:<10} "
+                f"{total_display:<15} {remaining_display:<25} "
+                f"{status_display:<20} {contract.sales_contact_id or 'N/A':<8}"
             )
 
         click.echo(f"\nTotal: {len(contracts)} contract(s)")
@@ -179,7 +177,7 @@ def create_contract(
 @click.option("--customer-id", type=int, help="New customer ID")
 @click.option("--total-amount", type=float, help="New total amount")
 @click.option("--remaining-amount", type=float, help="New remaining amount")
-@click.option("--signed/--unsigned", help="Update signature status")
+@click.option("--signed/--unsigned", default=None, help="Update signature status")
 @click.option("--sales-contact-id", type=int, help="New sales contact employee ID")
 @cli_auth_required
 @require_permission(Permission.UPDATE_CONTRACT)
@@ -236,11 +234,11 @@ def update_contract(
         # If no changes specified, prompt user
         if not any(
             [
-                customer_id,
+                customer_id is not None,
                 total_amount is not None,
                 remaining_amount is not None,
                 signed is not None,
-                sales_contact_id,
+                sales_contact_id is not None,
             ]
         ):
             click.echo("No changes specified. What would you like to update?")

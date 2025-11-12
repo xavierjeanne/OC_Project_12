@@ -45,15 +45,20 @@ class TestCLIServiceFactories:
         """Test event service factory function"""
         with patch("cli.commands.event.Session") as mock_session_class, patch(
             "cli.commands.event.EventRepository"
-        ) as mock_repo_class, patch(
+        ) as mock_event_repo_class, patch(
+            "cli.commands.event.ContractRepository"
+        ) as mock_contract_repo_class, patch(
             "cli.commands.event.EventService"
         ) as mock_service_class:
 
             mock_session = Mock()
             mock_session_class.return_value = mock_session
 
-            mock_repo = Mock()
-            mock_repo_class.return_value = mock_repo
+            mock_event_repo = Mock()
+            mock_event_repo_class.return_value = mock_event_repo
+            
+            mock_contract_repo = Mock()
+            mock_contract_repo_class.return_value = mock_contract_repo
 
             mock_service = Mock()
             mock_service_class.return_value = mock_service
@@ -62,8 +67,9 @@ class TestCLIServiceFactories:
 
             assert service == mock_service
             assert session == mock_session
-            mock_repo_class.assert_called_once_with(mock_session)
-            mock_service_class.assert_called_once_with(mock_repo)
+            mock_event_repo_class.assert_called_once_with(mock_session)
+            mock_contract_repo_class.assert_called_once_with(mock_session)
+            mock_service_class.assert_called_once_with(mock_event_repo, mock_contract_repo)
 
     def test_get_contract_service(self):
         """Test contract service factory function"""
@@ -307,15 +313,20 @@ class TestCLIComponentIntegration:
         """Test event service integration with CLI layer"""
         with patch("cli.commands.event.Session") as mock_session_class, patch(
             "cli.commands.event.EventRepository"
-        ) as mock_repo_class, patch(
+        ) as mock_event_repo_class, patch(
+            "cli.commands.event.ContractRepository"
+        ) as mock_contract_repo_class, patch(
             "cli.commands.event.EventService"
         ) as mock_service_class:
 
             mock_session = Mock()
             mock_session_class.return_value = mock_session
 
-            mock_repo = Mock()
-            mock_repo_class.return_value = mock_repo
+            mock_event_repo = Mock()
+            mock_event_repo_class.return_value = mock_event_repo
+            
+            mock_contract_repo = Mock()
+            mock_contract_repo_class.return_value = mock_contract_repo
 
             mock_service = Mock()
             mock_service_class.return_value = mock_service
@@ -325,5 +336,6 @@ class TestCLIComponentIntegration:
             # Verify all components are properly connected
             assert session == mock_session
             assert service == mock_service
-            mock_repo_class.assert_called_once_with(mock_session)
-            mock_service_class.assert_called_once_with(mock_repo)
+            mock_event_repo_class.assert_called_once_with(mock_session)
+            mock_contract_repo_class.assert_called_once_with(mock_session)
+            mock_service_class.assert_called_once_with(mock_event_repo, mock_contract_repo)

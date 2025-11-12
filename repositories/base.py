@@ -89,7 +89,7 @@ class BaseRepository(Generic[T]):
             List of entities
         """
         try:
-            query = self.db.query(self.model)
+            query = self.db.query(self.model).order_by(self.model.id)
             if offset > 0:
                 query = query.offset(offset)
 
@@ -172,7 +172,7 @@ class BaseRepository(Generic[T]):
             repository.filter_by(email="user@example.com", role="sales")
         """
         try:
-            entities = self.db.query(self.model).filter_by(**kwargs).all()
+            entities = self.db.query(self.model).filter_by(**kwargs).order_by(self.model.id).all()
             logger.debug(
                 f"Retrieved {len(entities)} {self.model.__name__} entities "
                 f"matching filters: {kwargs}"

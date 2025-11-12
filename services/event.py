@@ -1,4 +1,5 @@
 from repositories.event import EventRepository
+from repositories.contract import ContractRepository
 from utils.permissions import Permission, require_permission, PermissionError
 from utils.validators import (
     validate_string_not_empty,
@@ -11,8 +12,9 @@ from utils.audit_logger import log_exception_with_context
 
 class EventService:
 
-    def __init__(self, event_repository: EventRepository):
+    def __init__(self, event_repository: EventRepository, contract_repository: ContractRepository = None):
         self.repository = event_repository
+        self.contract_repository = contract_repository
 
     def get_event(self, event_id):
         return self.repository.get_by_id(event_id)
@@ -47,22 +49,45 @@ class EventService:
         if date_start and date_end and date_end < date_start:
             raise ValidationError("End date cannot be before start date")
 
-        # Relation with the support_contact
-        if current_user["role"] in ["management", "admin"]:
-            support_contact_id = event_data.get(
-                "support_contact_id", current_user["id"]
-            )
-        else:
-            support_contact_id = current_user["id"]
+        # Relation with the support_contact (optional - can be None)
+        support_contact_id = event_data.get("support_contact_id")
+        # Only management can assign specific support contacts
+        if support_contact_id and current_user["role"] not in ["management", "admin"]:
+            raise ValidationError("Only management can assign specific support contacts")
 
         # Validation IDs
         try:
             customer_id = int(customer_id)
-            support_contact_id = int(support_contact_id)
             if contract_id:
                 contract_id = int(contract_id)
+            if support_contact_id:
+                support_contact_id = int(support_contact_id)
         except (ValueError, TypeError):
             raise ValidationError("All ID fields must be valid integers")
+
+        # Business rule (STRICT): All events must have a signed contract
+        if not contract_id:
+            raise ValidationError(
+                "A contract ID is required to create an event. "
+                "Events can only be created for signed contracts."
+            )
+        
+        if not self.contract_repository:
+            raise ValidationError("Contract validation unavailable - cannot create event")
+            
+        contract = self.contract_repository.get_by_id(contract_id)
+        if not contract:
+            raise ValidationError(f"Contract with ID {contract_id} not found")
+        if not contract.signed:
+            raise ValidationError(
+                f"Cannot create event for unsigned contract {contract_id}. "
+                f"The contract must be signed before creating an event."
+            )
+        # Additional validation: verify the contract belongs to the specified customer
+        if contract.customer_id != customer_id:
+            raise ValidationError(
+                f"Contract {contract_id} does not belong to customer {customer_id}"
+            )
 
         event_data_dict = {
             "name": name,
